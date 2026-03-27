@@ -6,6 +6,42 @@ import Foundation
 import SwiftUI
 #endif
 
+private struct ExampleValue {
+    let title: String
+}
+
+private final class ExampleObject: NSObject {
+    let identifier: String
+
+    init(identifier: String) {
+        self.identifier = identifier
+        super.init()
+    }
+}
+
+private extension Backport where Content == ExampleValue {
+    var normalizedTitle: String {
+        content.title
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+}
+
+private extension Backport where Content: ExampleObject {
+    var debugIdentifier: String {
+        "object::\(content.identifier)"
+    }
+}
+
+#if canImport(SwiftUI)
+@available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
+private extension Backport where Content: View {
+    func eraseToAnyView() -> AnyView {
+        AnyView(content)
+    }
+}
+#endif
+
 /// Comprehensive tests for the Backport framework.
 ///
 /// This test class covers all three main components:
@@ -76,6 +112,13 @@ final class BackportTests: XCTestCase {
         XCTAssertEqual(backport.address.street, "123 Main St")
         XCTAssertEqual(backport.address.city, "Anytown")
     }
+
+    /// Tests that consumers can add custom backport APIs for plain Swift types.
+    func testCustomBackportExtensionForValueType() {
+        let value = ExampleValue(title: "  Hello Backport  ")
+
+        XCTAssertEqual(Backport(value).normalizedTitle, "hello backport")
+    }
     
     // MARK: - NSObjectProtocol extension tests
     
@@ -122,6 +165,13 @@ final class BackportTests: XCTestCase {
         XCTAssertEqual(backport.content, number)
         XCTAssertEqual(backport.intValue, 42)
     }
+
+    /// Tests that custom backport APIs are available through NSObjectProtocol `.backport`.
+    func testCustomBackportExtensionForNSObjectType() {
+        let object = ExampleObject(identifier: "sample")
+
+        XCTAssertEqual(object.backport.debugIdentifier, "object::sample")
+    }
     
     // MARK: - SwiftUI View extension tests
     
@@ -155,6 +205,13 @@ final class BackportTests: XCTestCase {
         
         // Verify that the backport wrapper can be created for modified views
         XCTAssertNotNil(backport.content)
+    }
+
+    @available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
+    func testCustomBackportExtensionForSwiftUIView() {
+        let erasedView = Text("Backport").backport.eraseToAnyView()
+
+        XCTAssertTrue(type(of: erasedView) == AnyView.self)
     }
     #endif
     

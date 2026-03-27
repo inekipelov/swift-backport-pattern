@@ -4,7 +4,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "swift-backport",
+    name: "swift-backport-pattern",
     platforms: [
         .macOS(.v10_13),
         .iOS(.v9),

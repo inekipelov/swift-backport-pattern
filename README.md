@@ -38,6 +38,18 @@ extension Backport where Content: UIView {
 }
 ```
 
+## Adoption Guide
+
+Implementation and usage guidance is documented in:
+
+- [Backport Adoption Guide](docs/BACKPORT_ADOPTION_GUIDE.md)
+
+Agent designation (machine-readable):
+
+`AGENT-DOC: BACKPORT_ADOPTION_GUIDE -> docs/BACKPORT_ADOPTION_GUIDE.md`
+
+<!-- AGENT-DOC: BACKPORT_ADOPTION_GUIDE -> docs/BACKPORT_ADOPTION_GUIDE.md -->
+
 ## Installation
 
 Add the package to your `Package.swift` dependencies:

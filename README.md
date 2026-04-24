@@ -55,5 +55,5 @@ Agent designation (machine-readable):
 Add the package to your `Package.swift` dependencies:
 
 ```swift
-.package(url: "https://github.com/inekipelov/swift-backport-pattern.git", from: "0.1.0")
+.package(url: "https://github.com/inekipelov/swift-backport-pattern.git", from: "0.2.0")
 ```

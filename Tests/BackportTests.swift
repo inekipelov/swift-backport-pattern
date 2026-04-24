@@ -60,21 +60,6 @@ final class BackportTests: XCTestCase {
         XCTAssertEqual(backport.content, testString)
     }
     
-    /// Tests dynamic member lookup functionality with a custom type.
-    func testBackportDynamicMemberLookup() {
-        struct TestStruct {
-            let name: String
-            let value: Int
-        }
-        
-        let testStruct = TestStruct(name: "Test", value: 42)
-        let backport = Backport(testStruct)
-        
-        // Test accessing properties through dynamic member lookup
-        XCTAssertEqual(backport.name, "Test")
-        XCTAssertEqual(backport.value, 42)
-    }
-    
     /// Tests that Backport can wrap different types correctly.
     func testBackportWithDifferentTypes() {
         // Test with Int
@@ -90,8 +75,8 @@ final class BackportTests: XCTestCase {
         XCTAssertEqual(dictBackport.content, ["key": "value"])
     }
     
-    /// Tests dynamic member lookup with nested properties.
-    func testBackportNestedPropertyAccess() {
+    /// Tests nested property access through explicit `content`.
+    func testBackportNestedPropertyAccessThroughContent() {
         struct Address {
             let street: String
             let city: String
@@ -108,9 +93,9 @@ final class BackportTests: XCTestCase {
         )
         let backport = Backport(person)
         
-        XCTAssertEqual(backport.name, "John Doe")
-        XCTAssertEqual(backport.address.street, "123 Main St")
-        XCTAssertEqual(backport.address.city, "Anytown")
+        XCTAssertEqual(backport.content.name, "John Doe")
+        XCTAssertEqual(backport.content.address.street, "123 Main St")
+        XCTAssertEqual(backport.content.address.city, "Anytown")
     }
 
     /// Tests that consumers can add custom backport APIs for plain Swift types.
@@ -136,7 +121,7 @@ final class BackportTests: XCTestCase {
         let backport = string.backport
         
         XCTAssertEqual(backport.content as NSString, string)
-        XCTAssertEqual(backport.length, string.length)
+        XCTAssertEqual(backport.content.length, string.length)
     }
     
     /// Tests backport with NSArray.
@@ -145,7 +130,7 @@ final class BackportTests: XCTestCase {
         let backport = array.backport
         
         XCTAssertEqual(backport.content, array)
-        XCTAssertEqual(backport.count, 3)
+        XCTAssertEqual(backport.content.count, 3)
     }
     
     /// Tests backport with NSDictionary.
@@ -154,7 +139,7 @@ final class BackportTests: XCTestCase {
         let backport = dictionary.backport
         
         XCTAssertEqual(backport.content, dictionary)
-        XCTAssertEqual(backport.count, 2)
+        XCTAssertEqual(backport.content.count, 2)
     }
     
     /// Tests backport with NSNumber.
@@ -163,7 +148,7 @@ final class BackportTests: XCTestCase {
         let backport = number.backport
         
         XCTAssertEqual(backport.content, number)
-        XCTAssertEqual(backport.intValue, 42)
+        XCTAssertEqual(backport.content.intValue, 42)
     }
 
     /// Tests that custom backport APIs are available through NSObjectProtocol `.backport`.
@@ -233,9 +218,9 @@ final class BackportTests: XCTestCase {
         let testObject = TestClass(identifier: "test", value: 100)
         let backport = testObject.backport
         
-        // Test that we can access both NSObject properties and custom properties
-        XCTAssertEqual(backport.identifier, "test")
-        XCTAssertEqual(backport.value, 100)
+        // Test that we can access custom properties through explicit `content`
+        XCTAssertEqual(backport.content.identifier, "test")
+        XCTAssertEqual(backport.content.value, 100)
         XCTAssertIdentical(backport.content, testObject)
     }
     
@@ -249,7 +234,7 @@ final class BackportTests: XCTestCase {
         XCTAssertTrue(type(of: intBackport.content) == Int.self)
     }
     
-    /// Tests performance of dynamic member lookup.
+    /// Tests performance of repeated `content` property access.
     func testBackportPerformance() {
         struct LargeStruct {
             let property1: String
@@ -270,11 +255,11 @@ final class BackportTests: XCTestCase {
         
         measure {
             for _ in 0..<1000 {
-                _ = backport.property1
-                _ = backport.property2
-                _ = backport.property3
-                _ = backport.property4
-                _ = backport.property5
+                _ = backport.content.property1
+                _ = backport.content.property2
+                _ = backport.content.property3
+                _ = backport.content.property4
+                _ = backport.content.property5
             }
         }
     }
@@ -291,8 +276,8 @@ final class BackportTests: XCTestCase {
         let optionalStruct = OptionalStruct(optionalString: nil, optionalInt: 42)
         let backport = Backport(optionalStruct)
         
-        XCTAssertNil(backport.optionalString)
-        XCTAssertEqual(backport.optionalInt, 42)
+        XCTAssertNil(backport.content.optionalString)
+        XCTAssertEqual(backport.content.optionalInt, 42)
     }
     
     /// Tests backport with empty collections.

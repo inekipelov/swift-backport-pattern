@@ -1,14 +1,13 @@
 /// A generic wrapper that provides backport functionality for any type.
 ///
-/// The `Backport` struct uses `@dynamicMemberLookup` to provide seamless access
-/// to the wrapped content's properties while enabling the addition of backport
-/// functionality through extensions.
+/// The `Backport` struct wraps content while enabling the addition of backport
+/// functionality through constrained extensions.
 ///
 /// ## Overview
 ///
 /// This struct serves as the foundation for the backport system, allowing you to
 /// add modern API features to older versions of frameworks. It wraps any content
-/// and provides transparent access to the original content's properties.
+/// and provides access to the original content via `content`.
 ///
 /// ## Usage
 ///
@@ -17,9 +16,6 @@
 /// let backportedView = view.backport
 /// ```
 ///
-/// - Note: This struct uses dynamic member lookup to forward property access
-///   to the wrapped content, making it transparent to use.
-@dynamicMemberLookup
 public struct Backport<Content> {
     /// The wrapped content that will receive backport functionality.
     ///
@@ -33,16 +29,5 @@ public struct Backport<Content> {
     /// - Parameter content: The content to wrap with backport functionality.
     public init(_ content: Content) {
         self.content = content
-    }
-
-    /// Provides dynamic member lookup access to the wrapped content's properties.
-    ///
-    /// This subscript enables transparent access to any property of the wrapped
-    /// content using key paths, making the backport wrapper feel invisible to users.
-    ///
-    /// - Parameter keyPath: A key path to a property on the wrapped content.
-    /// - Returns: The value of the property at the specified key path.
-    public subscript<T>(dynamicMember keyPath: KeyPath<Content, T>) -> T {
-        content[keyPath: keyPath]
     }
 }

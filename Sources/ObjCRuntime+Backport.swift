@@ -1,3 +1,4 @@
+#if canImport(ObjectiveC)
 import Foundation
 
 /// Extensions for Objective-C runtime objects to support backport functionality.
@@ -22,3 +23,4 @@ public extension NSObjectProtocol {
     var backport: Backport<Self> { .init(self) }
 }
 
+#endif

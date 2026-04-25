@@ -57,13 +57,3 @@ Add the package to your `Package.swift` dependencies:
 ```swift
 .package(url: "https://github.com/inekipelov/swift-backport-pattern.git", from: "0.2.0")
 ```
-
-## Git Hooks
-
-This repository ships a `gitlint` commit hook in [`.githooks/commit-msg`](/Users/inekipelov/Developer/swift-backport-pattern/.githooks/commit-msg).
-
-Enable it in a clone with:
-
-```bash
-git config core.hooksPath .githooks
-```

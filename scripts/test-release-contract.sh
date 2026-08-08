@@ -169,7 +169,7 @@ write_planner_state \
     "$(release_row 0.2.1 published)" \
     "$(tag_row 0.3.0 "$minor_sha")" \
     "$(release_row 0.3.0 published)"
-assert_plan 'completed old rerun' "$patch_sha" patch 'action=noop
+assert_plan 'target tag and published Release ignore newer Release' "$patch_sha" patch 'action=noop
 previous=0.2.0
 version=0.2.1
 blocker_pr='
@@ -180,10 +180,20 @@ write_planner_state \
     "$(release_row 0.2.0 published)" \
     "$(tag_row 0.2.1 "$patch_sha")" \
     "$(release_row 0.2.1 missing)"
-assert_plan 'resume partial target' "$patch_sha" patch 'action=resume
+assert_plan 'target tag without Release resumes when no newer Release exists' "$patch_sha" patch 'action=resume
 previous=0.2.0
 version=0.2.1
 blocker_pr='
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$patch_sha")" \
+    "$(release_row 0.2.1 missing)" \
+    "$(tag_row 0.3.0 "$minor_sha")" \
+    "$(release_row 0.3.0 published)"
+assert_plan_failure 'target tag without Release fails behind newer Release' "$patch_sha" patch
 
 write_planner_state \
     "$(pr_row 10 "$patch_sha" patch)" \
@@ -208,6 +218,16 @@ version=0.2.1
 blocker_pr=10'
 
 write_planner_state \
+    "$(pr_row 10 "$patch_sha" none)" \
+    "$(pr_row 11 "$minor_sha" minor)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)"
+assert_plan 'earlier unlabeled PR is ignored' "$minor_sha" minor 'action=create
+previous=0.2.0
+version=0.3.0
+blocker_pr='
+
+write_planner_state \
     "$(pr_row 10 "$patch_sha" patch)" \
     "$(pr_row 11 "$minor_sha" patch)" \
     "$(tag_row 0.2.0 "$baseline_sha")" \
@@ -226,7 +246,7 @@ write_planner_state \
     "$(release_row 0.2.0 published)" \
     "$(tag_row 0.2.1 "$patch_sha")" \
     "$(release_row 0.2.1 published)"
-assert_plan 'minor after refreshed patch' "$minor_sha" minor 'action=create
+assert_plan 'fresh predecessor changes next version before create' "$minor_sha" minor 'action=create
 previous=0.2.1
 version=0.3.0
 blocker_pr='

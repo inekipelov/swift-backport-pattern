@@ -62,8 +62,10 @@ jobs:
           jq --version
       - name: Validate documentation contract
         run: sh scripts/validate-documentation.sh
-      - name: Validate release contract
-        run: sh scripts/test-release-contract.sh
+      - name: Validate release contracts
+        run: |
+          sh scripts/test-release-contract.sh
+          sh scripts/test-publish-release.sh
       - name: Build package and tests
         shell: bash
         run: |

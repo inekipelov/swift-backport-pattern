@@ -66,6 +66,223 @@ latest=$(printf '%s\n' 0.9.9 0.10.0 01.0.0 v9.0.0 1.0.0-rc.1 notes 2.0.0+build |
 assert_equal 'numeric stable maximum' '0.10.0' "$latest"
 assert_failure 'missing stable baseline' sh -c "printf '%s\n' v1.0.0 1.0.0-rc.1 | sh scripts/latest-stable-version.sh"
 
+planner_root=$(mktemp -d)
+project_root=$(pwd)
+planner_state="$planner_root/release-state.tsv"
+planner_error="$planner_root/planner-error.txt"
+git -C "$planner_root" init -q
+git -C "$planner_root" config user.name 'Release Contract'
+git -C "$planner_root" config user.email 'release-contract@example.invalid'
+
+for name in baseline patch minor head; do
+    printf '%s\n' "$name" >"$planner_root/state"
+    git -C "$planner_root" add state
+    git -C "$planner_root" commit -q -m "$name"
+    commit_sha=$(git -C "$planner_root" rev-parse HEAD)
+    case "$name" in
+        baseline) baseline_sha=$commit_sha ;;
+        patch) patch_sha=$commit_sha ;;
+        minor) minor_sha=$commit_sha ;;
+        head) head_sha=$commit_sha ;;
+    esac
+done
+main_branch=$(git -C "$planner_root" symbolic-ref --short HEAD)
+git -C "$planner_root" checkout -q -b divergent "$baseline_sha"
+printf '%s\n' divergent >"$planner_root/divergent"
+git -C "$planner_root" add divergent
+git -C "$planner_root" commit -q -m divergent
+divergent_sha=$(git -C "$planner_root" rev-parse HEAD)
+git -C "$planner_root" checkout -q "$main_branch"
+
+pr_row() { printf 'pr\t%s\t%s\t%s' "$1" "$2" "$3"; }
+tag_row() { printf 'tag\t%s\t%s' "$1" "$2"; }
+release_row() { printf 'release\t%s\t%s' "$1" "$2"; }
+write_planner_state() {
+    : >"$planner_state"
+    for planner_row do
+        printf '%s\n' "$planner_row" >>"$planner_state"
+    done
+}
+assert_plan() {
+    description=$1
+    target=$2
+    bump=$3
+    expected=$4
+    if actual=$(cd "$planner_root" && \
+        sh "$project_root/scripts/plan-release.sh" "$target" "$bump" "$planner_state" \
+        2>"$planner_error"); then
+        assert_equal "$description" "$expected" "$actual"
+    else
+        fail "$description: planner failed unexpectedly"
+    fi
+}
+assert_plan_failure() {
+    description=$1
+    target=$2
+    bump=$3
+    if (cd "$planner_root" && \
+        sh "$project_root/scripts/plan-release.sh" "$target" "$bump" "$planner_state") \
+        >/dev/null 2>"$planner_error"; then
+        fail "$description: expected planner failure"
+    fi
+}
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)"
+assert_plan 'create from baseline' "$patch_sha" patch 'action=create
+previous=0.2.0
+version=0.2.1
+blocker_pr='
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$patch_sha")" \
+    "$(release_row 0.2.1 published)" \
+    "$(tag_row 0.3.0 "$minor_sha")" \
+    "$(release_row 0.3.0 published)"
+assert_plan 'completed old rerun' "$patch_sha" patch 'action=noop
+previous=0.2.0
+version=0.2.1
+blocker_pr='
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$patch_sha")" \
+    "$(release_row 0.2.1 missing)"
+assert_plan 'resume partial target' "$patch_sha" patch 'action=resume
+previous=0.2.0
+version=0.2.1
+blocker_pr='
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(pr_row 11 "$minor_sha" minor)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)"
+assert_plan 'wait for untagged predecessor' "$minor_sha" minor 'action=wait
+previous=0.2.0
+version=0.2.1
+blocker_pr=10'
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(pr_row 11 "$minor_sha" minor)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$patch_sha")" \
+    "$(release_row 0.2.1 missing)"
+assert_plan 'wait for partial predecessor' "$minor_sha" minor 'action=wait
+previous=0.2.0
+version=0.2.1
+blocker_pr=10'
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(pr_row 11 "$minor_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$patch_sha")" \
+    "$(release_row 0.2.1 published)"
+assert_plan 'patch after refreshed patch' "$minor_sha" patch 'action=create
+previous=0.2.1
+version=0.2.2
+blocker_pr='
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(pr_row 11 "$minor_sha" minor)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$patch_sha")" \
+    "$(release_row 0.2.1 published)"
+assert_plan 'minor after refreshed patch' "$minor_sha" minor 'action=create
+previous=0.2.1
+version=0.3.0
+blocker_pr='
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" major)" \
+    "$(pr_row 11 "$minor_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)" \
+    "$(tag_row 1.0.0 "$patch_sha")" \
+    "$(release_row 1.0.0 published)"
+assert_plan 'patch after refreshed major' "$minor_sha" patch 'action=create
+previous=1.0.0
+version=1.0.1
+blocker_pr='
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$patch_sha")" "$(release_row 0.2.1 published)" \
+    "$(tag_row 0.2.2 "$patch_sha")" "$(release_row 0.2.2 published)"
+assert_plan_failure 'multiple target tags' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.3.0 "$patch_sha")" "$(release_row 0.3.0 published)"
+assert_plan_failure 'target tag has wrong bump' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$minor_sha")" "$(release_row 0.2.1 missing)"
+assert_plan_failure 'candidate belongs to another SHA' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 missing)"
+assert_plan_failure 'missing published predecessor' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$divergent_sha")" "$(release_row 0.2.1 missing)"
+assert_plan_failure 'divergent stable tag' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 12 "$head_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$patch_sha")" "$(release_row 0.2.1 missing)" \
+    "$(tag_row 0.3.0 "$minor_sha")" "$(release_row 0.3.0 published)"
+assert_plan_failure 'partial tag behind later release' "$head_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" "$(pr_row 10 "$minor_sha" minor)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)"
+assert_plan_failure 'duplicate PR number' "$minor_sha" minor
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" \
+    "$(release_row 0.2.0 published)" "$(release_row 0.2.0 published)"
+assert_plan_failure 'duplicate Release row' "$patch_sha" patch
+
+write_planner_state \
+    "$(printf 'pr\t10\t%s\tpatch\textra' "$patch_sha")" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)"
+assert_plan_failure 'malformed TSV' "$patch_sha" patch
+
+missing_sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+write_planner_state \
+    "$(pr_row 9 "$missing_sha" none)" "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)"
+assert_plan_failure 'missing PR commit object' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.2.1 "$missing_sha")" "$(release_row 0.2.1 missing)"
+assert_plan_failure 'missing tag commit object' "$patch_sha" patch
+
 if [ "$failures" -ne 0 ]; then
     exit 1
 fi

@@ -15,6 +15,10 @@ tab=$(printf '\t')
 
 while IFS= read -r record || [ -n "$record" ]; do
     case "$record" in
+        merged"$tab"*)
+            printf '%s\n' 'release timeline: malformed record' >&2
+            exit 1
+            ;;
         *"$tab"*"$tab"*)
             printf '%s\n' 'release timeline: malformed record' >&2
             exit 1

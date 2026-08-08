@@ -47,6 +47,7 @@ An executable version of this pattern lives in
 
 Use the guide that matches the task:
 
+- [Contributing](CONTRIBUTING.md)
 - [Documentation Map](docs/README.md)
 - [Backport Adoption Guide](docs/BACKPORT_ADOPTION_GUIDE.md)
 - [AI Agent Adoption](docs/AI_AGENT_ADOPTION.md)

@@ -13,8 +13,11 @@ Use sources in this order when they conflict:
 3. `.agents/skills/backport-adoption/SKILL.md` for the repeatable create, review, migration, and removal workflow.
 4. `README.md` for the concise public entry point.
 
+`CONTRIBUTING.md` owns the contribution workflow, including branches, pull requests, review, and merge requirements.
+
 ## Task Routing
 
+- Before changing the repository, read `CONTRIBUTING.md` and follow its scope, branch, verification, review, and merge workflow.
 - For package API changes, inspect `Package.swift`, `Sources/`, and affected tests first.
 - For a concrete backport design, review, migration, or removal, use the `backport-adoption` skill and the adoption guide.
 - For documentation changes, preserve stable category identifiers and update compiled examples when code changes.

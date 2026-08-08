@@ -35,6 +35,7 @@ reject_text() {
 
 require_file AGENTS.md
 require_file CLAUDE.md
+require_file CONTRIBUTING.md
 require_file docs/README.md
 require_file docs/AI_AGENT_ADOPTION.md
 require_file docs/BACKPORT_ADOPTION_GUIDE.md
@@ -63,6 +64,22 @@ fi
 require_text .agents/skills/backport-adoption/SKILL.md 'name: backport-adoption'
 require_text .agents/skills/backport-adoption/SKILL.md 'description: Use when'
 require_text .agents/skills/backport-adoption/agents/openai.yaml 'default_prompt: "Use $backport-adoption'
+
+require_text CONTRIBUTING.md '## Sources of Truth'
+require_text CONTRIBUTING.md '## Branch Workflow'
+require_text CONTRIBUTING.md '## Risk Classification'
+require_text CONTRIBUTING.md '## Backport-Specific Changes'
+require_text CONTRIBUTING.md '## Verification'
+require_text CONTRIBUTING.md '## AI-Assisted Contributions'
+require_text CONTRIBUTING.md '## Review, Merge, and Definition of Done'
+require_text CONTRIBUTING.md 'sh scripts/validate-documentation.sh'
+require_text CONTRIBUTING.md 'swift test'
+require_text CONTRIBUTING.md 'swift build'
+require_text CONTRIBUTING.md 'git diff --check'
+require_text CONTRIBUTING.md 'independent human approval'
+require_text README.md '[Contributing](CONTRIBUTING.md)'
+require_text docs/README.md '[Contribution Workflow](../CONTRIBUTING.md)'
+require_text AGENTS.md '`CONTRIBUTING.md` owns the contribution workflow'
 
 require_text docs/BACKPORT_ADOPTION_GUIDE.md '`redirect-fallback`'
 require_text docs/BACKPORT_ADOPTION_GUIDE.md '`compatibility-type`'

@@ -1,231 +1,121 @@
 # Backport Adoption Guide
 
-Public engineering guide for adopting compatibility APIs with:
+Use this compact engineering guide to adopt compatibility APIs with:
 
-- `Backport<Content>` for instance-scoped APIs (`view.backport.newAPI(...)`)
-- `Backported` namespace (`typealias Backported = Backport<Never>`) for compatibility types (`Backported.SomeType`)
+- `Backport<Content>` for instance APIs: `view.backport.someAPI(...)`
+- `Backported` (`Backport<Never>`) for compatibility types: `Backported.SomeType`
 
-This guide is written for maintainers and contributors, including AI coding agents.
-This repository provides the pattern and guidance. Backport adoptions are expected to live in consumer app/package modules.
+This repository defines the pattern. Concrete Apple API adoptions belong in consumer app or package modules.
 
-## 1. Scope and Goals
+## 1. Scope
 
-Backports implemented with this pattern MUST:
+Every backport must:
 
 1. Preserve predictable behavior across supported OS versions.
-2. Minimize migration cost when old OS support is removed.
-3. Keep call sites stable and readable.
-4. Isolate compatibility logic away from product feature code.
-5. Provide a unified cross-version and cross-platform call site (for example, iOS has an API but tvOS does not) without scattering `if #available` or `#if os(...)` in production feature code.
+2. Keep call sites stable and readable.
+3. Isolate compatibility branching away from feature code.
+4. Minimize removal cost when old OS support is dropped.
+5. Provide one unified call site across OS and platform differences.
 
-Backports MUST NOT be introduced only to "make code compile" if semantics are unclear.
+Do not introduce a backport only to make code compile when its semantics are unclear.
 
-## 2. Decision Order
+## 2. Decision Matrix
 
-Choose an adoption strategy in this order:
+Evaluate categories in this order:
 
-1. Dummy fallback if behavior can safely degrade.
-2. Redirect fallback to a near-equivalent older API.
-3. `Backported` compatibility type if native types are unavailable.
-4. Full polyfill/backfill if parity is required and steps 1-3 are insufficient.
+1. `redirect-fallback`
+2. `compatibility-type`
+3. `behavioral-polyfill`
+4. `no-op-fallback`
 
-If behavior affects correctness, accessibility, security, or data integrity, skip step 1 and move to step 2+.
+A `no-op-fallback` is forbidden when degradation can affect correctness, accessibility, security, or data integrity.
 
-## 3. Canonical Backport Categories
+| Category | Use when | Do not use when | Required evidence |
+| --- | --- | --- | --- |
+| `redirect-fallback` | A near-equivalent legacy API exists and parameter mapping preserves user outcomes except explicit deltas | The remaining semantic drift is unacceptable | Document every semantic delta and unsupported parameter combination |
+| `compatibility-type` | The native API requires types unavailable on older OS versions and a stable call site is needed | Type invariants cannot be represented explicitly | Document invariants, availability-guarded native conversion, and platform exclusions |
+| `behavioral-polyfill` | Required behavior cannot accept redirect or no-op deltas | The team cannot own its implementation and removal cost | Document complexity, owner, validation, removal trigger, and migration path |
+| `no-op-fallback` | The feature is progressive enhancement and unchanged legacy behavior is a safe degrade | Any required outcome, interaction, or layout contract can break | Prove the degrade is safe and document the user-visible delta |
 
-### 3.1 Dummy Fallback
+Definitions:
 
-Unsupported OS path returns unchanged `content` (or another benign default).
+- **Near-equivalent:** equivalent user outcomes except for explicitly documented deltas.
+- **Safe degrade:** no effect on correctness, accessibility, security, or data integrity, with acceptable interaction and layout differences.
+- **Required parity:** documented fallback deltas are not acceptable for the product or platform contract.
 
-```swift
-public extension Backport where Content: ToolbarContent {
-    @ToolbarContentBuilder
-    func sharedBackgroundVisibility(_ visibility: Visibility) -> some ToolbarContent {
-        if #available(iOS 26.0, macOS 26.0, *) {
-            content.sharedBackgroundVisibility(visibility)
-        } else {
-            content
-        }
-    }
-}
-```
+## 3. Compiled Patterns
 
-Use when:
+[`Tests/DocumentationExamples.swift`](../Tests/DocumentationExamples.swift) compiles representative implementations for all four categories:
 
-1. API is progressive enhancement only.
-2. Legacy behavior remains acceptable.
+- `documentationRedirectEffect()` — legacy API redirect;
+- `Backported.DocumentationEffect` — compatibility type;
+- `documentationPolyfillEffect()` — custom legacy behavior;
+- `documentationNoOpEffect()` — safe unchanged-content fallback.
 
-Do not use when:
+The examples use a deliberately unreachable OS version so the current test environment compiles the native branches and executes the fallback branches. They demonstrate structure, not a real Apple API contract. Verify real signatures and availability against Apple documentation and the consumer's SDK.
 
-1. Behavior is required for correctness or accessibility outcomes.
-2. Removing the effect breaks interaction or layout expectations.
+## 4. Mandatory Decision Record
 
-Required notes:
+Create a decision record for every public backport. For internal backports, use the same record whenever fallback behavior can affect a user or more than one module.
 
-1. Document fallback as explicit no-op.
-2. Document user-visible delta (if any).
+Start from the [Backport Decision Record](../.agents/skills/backport-adoption/assets/backport-decision-record.md) and record:
 
-### 3.2 Redirect Fallback
+1. Lifecycle status, native API, availability, consumer deployment targets, and supported platforms.
+2. Selected semantic category and rejected alternatives.
+3. Native and fallback behavior, including semantic deltas.
+4. Correctness, accessibility, security, data-integrity, interaction, and layout risk.
+5. Platform/OS validation matrix and unexecutable gaps.
+6. Owner, decision date, removal trigger, and target release for any deferral.
 
-Unsupported OS path maps to an older API with similar semantics.
+## 5. Implementation Rules
 
-```swift
-extension Backport where Content: View {
-    @ViewBuilder
-    public func safeAreaBar(
-        edge: VerticalEdge,
-        alignment: HorizontalAlignment = .center,
-        spacing: CGFloat? = nil,
-        @ViewBuilder content: () -> some View
-    ) -> some View {
-        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-            self.content.safeAreaBar(edge: edge, alignment: alignment, spacing: spacing, content: content)
-        } else {
-            self.content.safeAreaInset(edge: edge, alignment: alignment, spacing: spacing, content: content)
-        }
-    }
-}
-```
+1. Mirror Apple naming where practical without claiming unsupported parity.
+2. Put instance behavior in `extension Backport where Content: ...`.
+3. Put compatibility types under `Backported`.
+4. Keep availability and platform branching inside the backport layer.
+5. Return structurally valid content from every SwiftUI branch.
+6. Make platform gaps explicit, including platforms that the consumer does not support.
+7. Keep compatibility types small and value-like; document their invariants.
+8. Guard every native conversion with the matching availability condition.
+9. Keep unrelated convenience APIs outside the backport layer.
+10. Document semantic deltas in API documentation and the decision record.
 
-Use when:
+## 6. Verification Gate
 
-1. A near-equivalent API exists.
-2. Parameter mapping can preserve behavior with a known semantic delta.
+Every public backport requires:
 
-Required notes:
+1. Compile coverage for native and fallback branches.
+2. At least one fallback behavior assertion or the strongest feasible proxy.
+3. At least one native behavior assertion when the native runtime is available.
+4. Source-stability coverage for the unified `.backport.` or `Backported.` call site.
+5. A platform/OS matrix that records `native`, `fallback`, both, or unexecuted for each supported platform.
+6. Explicit proxy evidence and confidence limits for branches CI cannot execute.
 
-1. Document semantic delta explicitly.
-2. Document unsupported parameter combinations (if any).
+Compilation proves only type and availability correctness. It does not prove visual, interaction, accessibility, or data behavior.
 
-### 3.3 `Backported` Compatibility Types
+## 7. Upgrade and Removal
 
-Define compatibility model types under `Backported`, then bridge to native types when available.
+When every supported deployment target reaches the native API's availability:
 
-```swift
-public extension Backported {
-    struct Glass: Sendable {
-        // compatibility representation
-    }
-}
+1. Replace backport call sites with the native API while preserving behavior.
+2. Remove the compatibility shim, fallback, bridges, and legacy helpers.
+3. Remove obsolete tests and documentation; retain native behavior coverage.
+4. Keep a compatibility type only when it still has product value independent of compatibility.
+5. Remove the package dependency only after repository-wide searches prove no other uses remain.
+6. Close the decision record with removal evidence, release, and validation matrix.
 
-public extension Backport where Content: PrimitiveButtonStyle {
-    @MainActor
-    func glass(_ glass: Backported.Glass) -> some PrimitiveButtonStyle {
-        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-            return .glass(glass.swiftUIGlass)
-        } else {
-            return .bordered
-        }
-    }
-}
-```
+Complete removal in the first release cycle after the deployment-target change. Record a reason and target release for any deferral.
 
-Use when:
+## 8. Anti-Patterns
 
-1. Native API introduces unavailable types on older OS versions.
-2. Stable public call site is required now.
+1. Undocumented differences between native and fallback branches.
+2. One wrapper API representing unrelated semantics.
+3. No-op fallback for a required or accessibility-relevant outcome without neutrality evidence.
+4. Compatibility helper with no owner or removal trigger.
+5. Feature-level availability checks duplicated around a unified backport API.
+6. Documentation examples that look executable but omit required types or conversions.
 
-Required rules:
+## 9. References
 
-1. Compatibility types SHOULD be small, value-like, and explicit.
-2. Invariants MUST be documented.
-3. Native conversion MUST be guarded by availability.
-4. Platform exclusions (`#if os(...)`) MUST be explicit.
-
-### 3.4 Full Polyfill / Behavioral Backfill
-
-Build custom legacy behavior when no safe no-op or redirect can preserve required semantics.
-
-Pattern:
-
-1. Native path for new OS.
-2. Legacy path (`LegacyXView`, custom modifier, adapter/service) for old OS.
-3. Single unified `Backport` entry point.
-
-```swift
-extension Backport where Content: View {
-    @ViewBuilder
-    func modernEffect(_ configuration: Backported.ModernEffectConfiguration) -> some View {
-        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-            content.modernEffect(configuration.nativeConfiguration)
-        } else {
-            LegacyModernEffectView(
-                base: content,
-                configuration: configuration
-            )
-        }
-    }
-}
-```
-
-Use when:
-
-1. Feature parity is required.
-2. Silent degradation is unacceptable.
-
-Trade-off:
-
-- Highest maintenance cost.
-
-## 4. API Design Rules
-
-1. Public names SHOULD mirror Apple naming where practical.
-2. Instance behavior MUST live in `extension Backport where Content: ...`.
-3. Type-like compatibility constructs MUST live under `Backported`.
-4. Avoid unrelated convenience APIs in backport modules.
-5. Keep wrappers explicit (`content`) and avoid hidden magic behavior.
-6. Availability and platform branching SHOULD be encapsulated inside the backport layer, not repeated at call sites.
-
-## 5. SwiftUI Rules
-
-1. Availability checks SHOULD stay at modifier boundaries, not spread through feature views.
-2. Both availability branches MUST return structurally valid view content.
-3. Fallback behavior for platform gaps (for example, visionOS) MUST be explicit and documented.
-4. Avoid runtime-conditional hierarchy changes inside wrappers unless intentionally tested.
-
-## 6. Usage Workflow (For Consumer Repositories)
-
-For each new backport in your app or library:
-
-1. Classify the backport approach as `3.1`, `3.2`, `3.3`, or `3.4`.
-2. Implement under your local module using `Backport`/`Backported` conventions from this guide.
-3. Document fallback behavior and semantic delta in API docs.
-4. Add tests for:
-   - compile-time availability branching
-   - old OS fallback behavior (or best feasible proxy)
-   - new OS native path behavior
-5. Add or update usage examples in your own repository docs.
-6. Define the removal plan for when your minimum OS reaches native availability.
-7. Verify that production feature code can call a single unified API without local `if #available` / `#if os(...)` branching for that feature.
-
-## 7. Testing Minimum
-
-Every public backport API MUST have:
-
-1. A compile-time coverage test for availability branches.
-2. At least one behavior assertion for fallback path.
-3. At least one behavior assertion for native path (when feasible).
-4. A source-stability check for public entry points (`.backport.` and `Backported.` usage).
-
-## 8. Upgrade and Removal
-
-When minimum OS >= native API availability:
-
-1. Remove compatibility shim.
-2. Replace backport call sites with native APIs as appropriate.
-3. Remove obsolete tests and docs.
-4. Keep compatibility types only if they still provide product value outside compatibility.
-
-## 9. Anti-Patterns
-
-1. Undocumented behavior differences between OS branches.
-2. Reusing one wrapper API for unrelated semantics.
-3. No-op fallbacks for correctness-critical features.
-4. Introducing compatibility helpers with no clear deprecation/removal path.
-
-## 10. References
-
-- Dave DeLong, "Simplifying Backwards Compatibility in Swift":
-  - https://davedelong.com/blog/2021/10/09/simplifying-backwards-compatibility-in-swift/
-- SwiftUI Garden, "Handling different iOS versions in a View body":
-  - https://swiftui-garden.com/Articles/Handling-different-iOS-versions-in-a-View-body
+- Dave DeLong, [Simplifying Backwards Compatibility in Swift](https://davedelong.com/blog/2021/10/09/simplifying-backwards-compatibility-in-swift/)
+- SwiftUI Garden, [Handling different iOS versions in a View body](https://swiftui-garden.com/Articles/Handling-different-iOS-versions-in-a-View-body)

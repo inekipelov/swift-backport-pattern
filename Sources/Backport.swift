@@ -12,8 +12,8 @@
 /// ## Usage
 ///
 /// ```swift
-/// let view = MyView()
-/// let backportedView = view.backport
+/// let wrappedValue = Backport("Example")
+/// print(wrappedValue.content)
 /// ```
 ///
 public struct Backport<Content> {

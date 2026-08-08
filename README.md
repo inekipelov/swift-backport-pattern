@@ -18,37 +18,38 @@ compatibility](https://davedelong.com/blog/2021/10/09/simplifying-backwards-comp
 
 ## Usage
 
+The package provides a namespace pattern. Consumer modules define the concrete
+compatibility APIs they need:
+
 ```swift
+import Foundation
 import Backport
 
-// Basic usage
-let view = MyView()
-view.backport.modernFeature()
+struct Article {
+    let title: String
+}
 
-// SwiftUI
-Text("Hello")
-    .backport.modernModifier()
-
-// Custom extensions
-extension Backport where Content: UIView {
-    func modernShadow() -> Content {
-        // Implementation
-        return content
+extension Backport where Content == Article {
+    var normalizedTitle: String {
+        content.title
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
     }
 }
+
+let title = Backport(Article(title: "  News  ")).normalizedTitle
 ```
 
-## Adoption Guide
+An executable version of this pattern lives in
+[`Tests/DocumentationExamples.swift`](Tests/DocumentationExamples.swift).
 
-Implementation and usage guidance is documented in:
+## Documentation
 
+Use the guide that matches the task:
+
+- [Documentation Map](docs/README.md)
 - [Backport Adoption Guide](docs/BACKPORT_ADOPTION_GUIDE.md)
-
-Agent designation (machine-readable):
-
-`AGENT-DOC: BACKPORT_ADOPTION_GUIDE -> docs/BACKPORT_ADOPTION_GUIDE.md`
-
-<!-- AGENT-DOC: BACKPORT_ADOPTION_GUIDE -> docs/BACKPORT_ADOPTION_GUIDE.md -->
+- [AI Agent Adoption](docs/AI_AGENT_ADOPTION.md)
 
 ## Installation
 

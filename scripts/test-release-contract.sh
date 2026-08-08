@@ -126,6 +126,20 @@ assert_plan_failure() {
         fail "$description: expected planner failure"
     fi
 }
+assert_plan_error() {
+    description=$1
+    target=$2
+    bump=$3
+    expected=$4
+    if (cd "$planner_root" && \
+        sh "$project_root/scripts/plan-release.sh" "$target" "$bump" "$planner_state") \
+        >/dev/null 2>"$planner_error"; then
+        fail "$description: expected planner failure"
+    else
+        actual=$(cat "$planner_error")
+        assert_equal "$description" "$expected" "$actual"
+    fi
+}
 
 write_planner_state \
     "$(pr_row 10 "$patch_sha" patch)" \
@@ -235,7 +249,15 @@ write_planner_state \
     "$(pr_row 10 "$patch_sha" patch)" \
     "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)" \
     "$(tag_row 0.2.1 "$minor_sha")" "$(release_row 0.2.1 missing)"
-assert_plan_failure 'candidate belongs to another SHA' "$patch_sha" patch
+assert_plan_error 'candidate belongs to another SHA' "$patch_sha" patch \
+    "release plan: candidate version already belongs to $minor_sha"
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)" \
+    "$(tag_row 0.3.0 "$minor_sha")" "$(release_row 0.3.0 published)"
+assert_plan_error 'descendant tag blocks create' "$patch_sha" patch \
+    'release plan: cannot create release before descendant tag: 0.3.0'
 
 write_planner_state \
     "$(pr_row 10 "$patch_sha" patch)" \
@@ -270,6 +292,21 @@ write_planner_state \
     "$(printf 'pr\t10\t%s\tpatch\textra' "$patch_sha")" \
     "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)"
 assert_plan_failure 'malformed TSV' "$patch_sha" patch
+
+write_planner_state \
+    "$(printf 'pr\t10\t%s\tpatch\t' "$patch_sha")" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)"
+assert_plan_failure 'trailing empty PR field' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(printf 'tag\t0.2.0\t%s\t' "$baseline_sha")" "$(release_row 0.2.0 published)"
+assert_plan_failure 'trailing empty tag field' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(printf 'release\t0.2.0\tpublished\t')"
+assert_plan_failure 'trailing empty Release field' "$patch_sha" patch
 
 missing_sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 write_planner_state \

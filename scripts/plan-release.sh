@@ -19,8 +19,10 @@ is_ancestor() {
     [ "$ancestry_status" -eq 1 ] && return 1
     fail_state "cannot compare ancestry: $1 -> $2"
 }
-strict_version() {
-    printf '%s\n' "$1" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+canonical_version() {
+    validated_version=$(printf '%s\n' "$1" | \
+        sh "$script_dir/latest-stable-version.sh" 2>/dev/null) || return 1
+    [ "$validated_version" = "$1" ]
 }
 release_state_for() {
     awk -F '\t' -v version="$1" '$1 == version { print $2 }' "$release_file"
@@ -66,6 +68,13 @@ cleanup() {
 trap cleanup 0 1 2 15
 
 tab=$(printf '\t')
+record_shape_error=$(awk -F '\t' '
+    $1 == "pr" && NF != 4 { print "malformed pr record at line " NR; exit }
+    $1 == "tag" && NF != 3 { print "malformed tag record at line " NR; exit }
+    $1 == "release" && NF != 3 { print "malformed release record at line " NR; exit }
+' "$state_file")
+[ -z "$record_shape_error" ] || fail_state "$record_shape_error"
+
 line_number=0
 while IFS="$tab" read -r kind one two three extra || \
     [ -n "${kind:-}${one:-}${two:-}${three:-}${extra:-}" ]; do
@@ -84,7 +93,7 @@ while IFS="$tab" read -r kind one two three extra || \
         tag)
             [ -n "${one:-}" ] && [ -n "${two:-}" ] && [ -z "${three:-}" ] || \
                 fail_state "malformed tag record at line $line_number"
-            strict_version "$one" || fail_state "invalid stable tag at line $line_number: $one"
+            canonical_version "$one" || fail_state "invalid stable tag at line $line_number: $one"
             validate_sha "$two" "tag SHA at line $line_number"
             require_commit "$two" "tag SHA at line $line_number"
             printf '%s\t%s\n' "$one" "$two" >>"$tag_file"
@@ -92,7 +101,7 @@ while IFS="$tab" read -r kind one two three extra || \
         release)
             [ -n "${one:-}" ] && [ -n "${two:-}" ] && [ -z "${three:-}" ] || \
                 fail_state "malformed release record at line $line_number"
-            strict_version "$one" || fail_state "invalid Release version at line $line_number: $one"
+            canonical_version "$one" || fail_state "invalid Release version at line $line_number: $one"
             case "$two" in published|missing|draft|prerelease) ;; *) fail_state "invalid Release state at line $line_number" ;; esac
             printf '%s\t%s\n' "$one" "$two" >>"$release_file"
             ;;
@@ -228,12 +237,12 @@ if [ -n "$target_tag" ]; then
     esac
 fi
 
+candidate_sha=$(tag_sha_for "$expected_target_version")
+[ -z "$candidate_sha" ] || fail_state "candidate version already belongs to $candidate_sha"
 while IFS="$tab" read -r version tag_sha; do
     [ "$tag_sha" != "$target_sha" ] || continue
     if is_ancestor "$target_sha" "$tag_sha"; then
         fail_state "cannot create release before descendant tag: $version"
     fi
 done <"$tag_file"
-candidate_sha=$(tag_sha_for "$expected_target_version")
-[ -z "$candidate_sha" ] || fail_state "candidate version already belongs to $candidate_sha"
 emit_plan create "$current_version" "$expected_target_version" ''

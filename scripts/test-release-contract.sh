@@ -47,6 +47,7 @@ assert_equal 'label active at merge' 'semver:minor' "$timeline_output"
 
 assert_failure 'missing merge boundary' sh -c "printf '%s\\t%s\\n' labeled semver:patch | sh scripts/release-labels-at-merge.sh"
 assert_failure 'multiple merge boundaries' sh -c "printf '%s\\n%s\\n' merged merged | sh scripts/release-labels-at-merge.sh"
+assert_failure 'trailing TSV field' sh -c "printf '%s\\t%s\\t\\n%s\\n' labeled semver:patch merged | sh scripts/release-labels-at-merge.sh"
 
 if [ "$failures" -ne 0 ]; then
     exit 1

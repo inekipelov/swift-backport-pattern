@@ -13,11 +13,28 @@ frozen_patch=0
 frozen_unsupported=0
 tab=$(printf '\t')
 
-while IFS="$tab" read -r event label extra || [ -n "$event${label:-}${extra:-}" ]; do
-    [ -z "${extra:-}" ] || { printf '%s\n' 'release timeline: malformed record' >&2; exit 1; }
+while IFS= read -r record || [ -n "$record" ]; do
+    case "$record" in
+        *"$tab"*"$tab"*)
+            printf '%s\n' 'release timeline: malformed record' >&2
+            exit 1
+            ;;
+    esac
+
+    case "$record" in
+        *"$tab"*)
+            event=${record%%"$tab"*}
+            label=${record#*"$tab"}
+            ;;
+        *)
+            event=$record
+            label=
+            ;;
+    esac
+
     case "$event" in
         labeled|unlabeled)
-            [ -n "${label:-}" ] || { printf '%s\n' 'release timeline: missing label' >&2; exit 1; }
+            [ -n "$label" ] || { printf '%s\n' 'release timeline: missing label' >&2; exit 1; }
             [ "$merge_count" -eq 0 ] || continue
             value=1
             [ "$event" = labeled ] || value=0
@@ -35,7 +52,7 @@ while IFS="$tab" read -r event label extra || [ -n "$event${label:-}${extra:-}" 
             esac
             ;;
         merged)
-            [ -z "${label:-}" ] || { printf '%s\n' 'release timeline: merged record has a label' >&2; exit 1; }
+            [ -z "$label" ] || { printf '%s\n' 'release timeline: merged record has a label' >&2; exit 1; }
             merge_count=$((merge_count + 1))
             [ "$merge_count" -eq 1 ] || { printf '%s\n' 'release timeline: multiple merge boundaries' >&2; exit 1; }
             frozen_major=$major

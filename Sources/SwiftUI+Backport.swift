@@ -24,8 +24,7 @@ public extension View {
     /// ## Usage
     ///
     /// ```swift
-    /// Text("Hello, World!")
-    ///     .backport.someModernFeature()
+    /// let wrappedText = Text("Hello, World!").backport
     /// ```
     ///
     /// - Returns: A `Backport` wrapper around this view that provides access

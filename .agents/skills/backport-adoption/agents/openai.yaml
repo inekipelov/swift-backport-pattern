@@ -1,0 +1,4 @@
+interface:
+  display_name: "Backport Adoption"
+  short_description: "Design and review Swift compatibility APIs"
+  default_prompt: "Use $backport-adoption to design or review a Swift compatibility API."

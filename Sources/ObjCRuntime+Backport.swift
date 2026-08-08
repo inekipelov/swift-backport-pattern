@@ -15,8 +15,8 @@ public extension NSObjectProtocol {
     /// ## Usage
     ///
     /// ```swift
-    /// let label = UILabel()
-    /// let backportedLabel = label.backport
+    /// let object = NSObject()
+    /// let wrappedObject = object.backport
     /// ```
     ///
     /// - Returns: A `Backport` wrapper around this NSObject instance.

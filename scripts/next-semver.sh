@@ -3,6 +3,13 @@
 [ "$#" -eq 2 ] || { printf '%s\n' 'usage: next-semver.sh VERSION BUMP' >&2; exit 2; }
 
 stable_pattern='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+case "$1" in
+    *'
+'*)
+        printf '%s\n' "semver: invalid stable version: $1" >&2
+        exit 1
+        ;;
+esac
 printf '%s\n' "$1" | grep -Eq "$stable_pattern" || {
     printf '%s\n' "semver: invalid stable version: $1" >&2
     exit 1

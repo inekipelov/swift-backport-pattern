@@ -59,6 +59,7 @@ assert_failure 'leading zero version' sh scripts/next-semver.sh 01.2.3 patch
 assert_failure 'prerelease version' sh scripts/next-semver.sh 1.2.3-rc.1 patch
 assert_failure 'missing version component' sh scripts/next-semver.sh 1.2 patch
 assert_failure 'whitespace in version' sh scripts/next-semver.sh ' 1.2.3' patch
+assert_failure 'embedded newline in version' sh scripts/next-semver.sh "$(printf '1.2.3\ninvalid')" patch
 assert_failure 'unsupported bump' sh scripts/next-semver.sh 1.2.3 build
 
 latest=$(printf '%s\n' 0.9.9 0.10.0 01.0.0 v9.0.0 1.0.0-rc.1 notes 2.0.0+build | sh scripts/latest-stable-version.sh)

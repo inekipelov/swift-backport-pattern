@@ -26,6 +26,17 @@ assert_failure() {
     fi
 }
 
+assert_error() {
+    description=$1
+    expected=$2
+    shift 2
+    if actual=$("$@" 2>&1 >/dev/null); then
+        fail "$description: expected failure"
+    elif [ "$actual" != "$expected" ]; then
+        fail "$description: expected error '$expected', got '$actual'"
+    fi
+}
+
 assert_equal 'zero labels' '' "$(printf '' | sh scripts/validate-release-labels.sh)"
 assert_equal 'patch label' 'patch' "$(printf '%s\n' 'semver:patch' | sh scripts/validate-release-labels.sh)"
 assert_equal 'unrelated plus minor' 'minor' "$(printf '%s\n' 'documentation' 'semver:minor' | sh scripts/validate-release-labels.sh)"
@@ -337,6 +348,48 @@ assert_plan_failure 'missing tag commit object' "$patch_sha" patch
 
 adapter_sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 fake_gh=scripts/test-fixtures/fake-gh.sh
+fake_accept='Accept: application/vnd.github+json'
+fake_pulls_endpoint="repos/owner/repository/commits/$adapter_sha/pulls?per_page=100"
+fake_timeline_endpoint='repos/owner/repository/issues/42/timeline?per_page=100'
+fake_valid_timeline='[[{"event":"labeled","label":{"name":"semver:patch"}}],[{"event":"merged"},{"event":"unlabeled","label":{"name":"semver:patch"}}]]'
+
+assert_error 'fake requires api subcommand' 'fake gh: unexpected argument count' \
+    env FAKE_GH_SCENARIO=zero \
+    FAKE_TARGET_SHA="$adapter_sha" "$fake_gh" \
+    --paginate --slurp -H "$fake_accept" "$fake_pulls_endpoint"
+assert_error 'fake requires pagination' 'fake gh: unexpected argument count' \
+    env FAKE_GH_SCENARIO=zero \
+    FAKE_TARGET_SHA="$adapter_sha" "$fake_gh" \
+    api --slurp -H "$fake_accept" "$fake_pulls_endpoint"
+assert_error 'fake requires slurped pages' 'fake gh: unexpected argument count' \
+    env FAKE_GH_SCENARIO=zero \
+    FAKE_TARGET_SHA="$adapter_sha" "$fake_gh" \
+    api --paginate -H "$fake_accept" "$fake_pulls_endpoint"
+assert_error 'fake requires GitHub JSON Accept header' \
+    'fake gh: unexpected Accept header' env FAKE_GH_SCENARIO=zero \
+    FAKE_TARGET_SHA="$adapter_sha" "$fake_gh" \
+    api --paginate --slurp -H 'Accept: application/json' "$fake_pulls_endpoint"
+assert_error 'fake rejects wrong repository' \
+    "fake gh: unexpected endpoint: repos/other/repository/commits/$adapter_sha/pulls?per_page=100" \
+    env FAKE_GH_SCENARIO=zero \
+    FAKE_TARGET_SHA="$adapter_sha" "$fake_gh" \
+    api --paginate --slurp -H "$fake_accept" \
+    "repos/other/repository/commits/$adapter_sha/pulls?per_page=100"
+assert_error 'fake rejects wrong target SHA' \
+    'fake gh: unexpected endpoint: repos/owner/repository/commits/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/pulls?per_page=100' \
+    env FAKE_GH_SCENARIO=zero \
+    FAKE_TARGET_SHA="$adapter_sha" "$fake_gh" \
+    api --paginate --slurp -H "$fake_accept" \
+    'repos/owner/repository/commits/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/pulls?per_page=100'
+
+fake_output=$(env FAKE_GH_SCENARIO=multiple FAKE_TARGET_SHA="$adapter_sha" \
+    "$fake_gh" api --paginate --slurp -H "$fake_accept" "$fake_timeline_endpoint")
+assert_equal 'ambiguous ownership fixture has valid downstream timeline' \
+    "$fake_valid_timeline" "$fake_output"
+fake_output=$(env FAKE_GH_SCENARIO=mismatch FAKE_TARGET_SHA="$adapter_sha" \
+    "$fake_gh" api --paginate --slurp -H "$fake_accept" "$fake_timeline_endpoint")
+assert_equal 'SHA mismatch fixture has valid downstream timeline' \
+    "$fake_valid_timeline" "$fake_output"
 
 adapter_output=$(env FAKE_GH_SCENARIO=zero FAKE_TARGET_SHA="$adapter_sha" \
     GH_BIN="$fake_gh" sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha")
@@ -350,10 +403,14 @@ assert_equal 'one exact PR with paginated timeline' "pr_number=42
 merge_sha=$adapter_sha
 bump=patch" "$adapter_output"
 
-assert_failure 'multiple exact associated PRs' env FAKE_GH_SCENARIO=multiple \
+assert_error 'multiple exact associated PRs' \
+    'release context: multiple PRs own target SHA' \
+    env FAKE_GH_SCENARIO=multiple \
     FAKE_TARGET_SHA="$adapter_sha" GH_BIN="$fake_gh" \
     sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha"
-assert_failure 'merge SHA association mismatch' env FAKE_GH_SCENARIO=mismatch \
+assert_error 'merge SHA association mismatch' \
+    'release context: associated main PR does not own target SHA' \
+    env FAKE_GH_SCENARIO=mismatch \
     FAKE_TARGET_SHA="$adapter_sha" GH_BIN="$fake_gh" \
     sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha"
 assert_failure 'missing merge timeline event' env FAKE_GH_SCENARIO=missing_merge \

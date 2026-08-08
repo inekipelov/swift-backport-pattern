@@ -5,16 +5,21 @@ set -eu
 : "${FAKE_GH_SCENARIO:?FAKE_GH_SCENARIO is required}"
 : "${FAKE_TARGET_SHA:?FAKE_TARGET_SHA is required}"
 
-endpoint=
-for argument do
-    case "$argument" in
-        repos/*) endpoint=$argument ;;
-    esac
-done
-[ -n "$endpoint" ] || { printf '%s\n' 'fake gh: missing endpoint' >&2; exit 2; }
+[ "$#" -eq 6 ] || { printf '%s\n' 'fake gh: unexpected argument count' >&2; exit 2; }
+[ "$1" = api ] || { printf '%s\n' 'fake gh: expected api subcommand' >&2; exit 2; }
+[ "$2" = --paginate ] || { printf '%s\n' 'fake gh: expected --paginate' >&2; exit 2; }
+[ "$3" = --slurp ] || { printf '%s\n' 'fake gh: expected --slurp' >&2; exit 2; }
+[ "$4" = -H ] || { printf '%s\n' 'fake gh: expected -H' >&2; exit 2; }
+[ "$5" = 'Accept: application/vnd.github+json' ] || {
+    printf '%s\n' 'fake gh: unexpected Accept header' >&2
+    exit 2
+}
+endpoint=$6
+pulls_endpoint="repos/owner/repository/commits/$FAKE_TARGET_SHA/pulls?per_page=100"
+timeline_endpoint='repos/owner/repository/issues/42/timeline?per_page=100'
 
 case "$endpoint" in
-    */pulls\?per_page=100)
+    "$pulls_endpoint")
         case "$FAKE_GH_SCENARIO" in
             association_failure) exit 1 ;;
             zero)
@@ -32,7 +37,7 @@ case "$endpoint" in
             *) printf '%s\n' "fake gh: unknown scenario: $FAKE_GH_SCENARIO" >&2; exit 2 ;;
         esac
         ;;
-    */issues/42/timeline\?per_page=100)
+    "$timeline_endpoint")
         case "$FAKE_GH_SCENARIO" in
             timeline_failure) exit 1 ;;
             missing_merge)
@@ -41,7 +46,7 @@ case "$endpoint" in
             multiple_merge)
                 printf '%s\n' '[[{"event":"labeled","label":{"name":"semver:patch"}},{"event":"merged"}],[{"event":"merged"}]]'
                 ;;
-            one)
+            one|multiple|mismatch)
                 printf '%s\n' '[[{"event":"labeled","label":{"name":"semver:patch"}}],[{"event":"merged"},{"event":"unlabeled","label":{"name":"semver:patch"}}]]'
                 ;;
             *) printf '%s\n' 'fake gh: unexpected timeline request' >&2; exit 2 ;;

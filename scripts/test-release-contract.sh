@@ -50,6 +50,21 @@ assert_failure 'multiple merge boundaries' sh -c "printf '%s\\n%s\\n' merged mer
 assert_failure 'trailing TSV field' sh -c "printf '%s\\t%s\\t\\n%s\\n' labeled semver:patch merged | sh scripts/release-labels-at-merge.sh"
 assert_failure 'trailing merged TSV field' sh -c "printf 'merged\\t\\n' | sh scripts/release-labels-at-merge.sh"
 
+assert_equal 'patch transition' '0.2.1' "$(sh scripts/next-semver.sh 0.2.0 patch)"
+assert_equal 'minor transition' '0.3.0' "$(sh scripts/next-semver.sh 0.2.0 minor)"
+assert_equal 'major transition' '1.0.0' "$(sh scripts/next-semver.sh 0.2.0 major)"
+assert_equal 'decimal carry' '0.10.0' "$(sh scripts/next-semver.sh 0.9.9 minor)"
+assert_equal 'large decimal carry' '10.0.0' "$(sh scripts/next-semver.sh 9.9.9 major)"
+assert_failure 'leading zero version' sh scripts/next-semver.sh 01.2.3 patch
+assert_failure 'prerelease version' sh scripts/next-semver.sh 1.2.3-rc.1 patch
+assert_failure 'missing version component' sh scripts/next-semver.sh 1.2 patch
+assert_failure 'whitespace in version' sh scripts/next-semver.sh ' 1.2.3' patch
+assert_failure 'unsupported bump' sh scripts/next-semver.sh 1.2.3 build
+
+latest=$(printf '%s\n' 0.9.9 0.10.0 01.0.0 v9.0.0 1.0.0-rc.1 notes 2.0.0+build | sh scripts/latest-stable-version.sh)
+assert_equal 'numeric stable maximum' '0.10.0' "$latest"
+assert_failure 'missing stable baseline' sh -c "printf '%s\n' v1.0.0 1.0.0-rc.1 | sh scripts/latest-stable-version.sh"
+
 if [ "$failures" -ne 0 ]; then
     exit 1
 fi

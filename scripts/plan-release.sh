@@ -69,9 +69,19 @@ trap cleanup 0 1 2 15
 
 tab=$(printf '\t')
 record_shape_error=$(awk -F '\t' '
-    $1 == "pr" && NF != 4 { print "malformed pr record at line " NR; exit }
-    $1 == "tag" && NF != 3 { print "malformed tag record at line " NR; exit }
-    $1 == "release" && NF != 3 { print "malformed release record at line " NR; exit }
+    $1 == "pr" {
+        if (NF != 4) { print "malformed pr record at line " NR; exit }
+        next
+    }
+    $1 == "tag" {
+        if (NF != 3) { print "malformed tag record at line " NR; exit }
+        next
+    }
+    $1 == "release" {
+        if (NF != 3) { print "malformed release record at line " NR; exit }
+        next
+    }
+    { print "unknown record at line " NR; exit }
 ' "$state_file")
 [ -z "$record_shape_error" ] || fail_state "$record_shape_error"
 

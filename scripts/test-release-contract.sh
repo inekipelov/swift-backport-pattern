@@ -308,6 +308,21 @@ write_planner_state \
     "$(tag_row 0.2.0 "$baseline_sha")" "$(printf 'release\t0.2.0\tpublished\t')"
 assert_plan_failure 'trailing empty Release field' "$patch_sha" patch
 
+write_planner_state \
+    "$(printf '\tpr\t10\t%s\tpatch' "$patch_sha")" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(release_row 0.2.0 published)"
+assert_plan_failure 'leading empty PR field' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(printf '\ttag\t0.2.0\t%s' "$baseline_sha")" "$(release_row 0.2.0 published)"
+assert_plan_failure 'leading empty tag field' "$patch_sha" patch
+
+write_planner_state \
+    "$(pr_row 10 "$patch_sha" patch)" \
+    "$(tag_row 0.2.0 "$baseline_sha")" "$(printf '\trelease\t0.2.0\tpublished')"
+assert_plan_failure 'leading empty Release field' "$patch_sha" patch
+
 missing_sha=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 write_planner_state \
     "$(pr_row 9 "$missing_sha" none)" "$(pr_row 10 "$patch_sha" patch)" \

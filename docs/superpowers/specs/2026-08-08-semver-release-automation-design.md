@@ -3,9 +3,11 @@
 ## Goal
 
 Replace the repository's split Build, Test, and Gitlint workflows with one
-CI/CD workflow that compiles the Swift package and its tests once, presents
-readable GitHub annotations, and publishes stable SemVer releases only after a
-merged pull request explicitly authorizes a version bump through one label.
+read-only CI workflow that compiles the Swift package and its tests once and
+presents readable GitHub annotations. A separate trusted publication workflow
+creates stable SemVer releases only after the successful `main` push CI for a
+merged pull request that explicitly authorized a version bump through one
+label.
 
 The workflow must make ordinary merges safe: a pull request without a SemVer
 label runs the complete merge gate but never creates a tag or GitHub Release.
@@ -69,8 +71,13 @@ label set and build an exact delete list containing every name outside the
 three-label allowlist, including any label added after the audit. It must also
 inspect assignments on open and closed issues and pull requests. An unexpected
 assignment stops the mutation for review rather than silently erasing
-historical metadata. After deletion, the live label set must equal the
-allowlist exactly.
+historical metadata. Label and assignment reads must use complete API
+pagination. After creating or updating the three allowed labels, automation
+must immediately repeat the full audit, require that the reviewed delete set
+has not drifted, and recheck every target for assignments immediately before
+deleting it. After deletion, the fully paginated live label set must equal the
+allowlist exactly. Any concurrent drift aborts the operation; the labels API
+does not provide an atomic bulk transaction.
 
 Deleting label definitions is not delegated to the release workflow; it is a
 one-time, reviewed repository configuration change.
@@ -78,7 +85,7 @@ one-time, reviewed repository configuration change.
 No `release:none` label is added because absence of a `semver:*` label already
 expresses that state without requiring maintainers to label every pull request.
 
-## Unified CI/CD Workflow
+## CI and Publication Workflows
 
 `.github/workflows/ci.yml` replaces `build.yml`, `test.yml`, and `gitlint.yml`.
 It runs for `pull_request` events targeting `main` with the `opened`,
@@ -89,8 +96,15 @@ earlier successful result.
 
 Pull request runs use a per-pull-request concurrency group and cancel an older
 run when a newer commit or label event arrives. Push runs are not cancelled by
-newer pushes. The workflow contains three jobs with distinct permissions and
-responsibilities.
+newer pushes. The workflow contains the `release-label` and `build-and-test`
+jobs and has no write permission.
+
+`.github/workflows/release.yml` is a separate privileged workflow triggered by
+the `completed` `workflow_run` event for CI on `main`. Its release job runs only
+when the triggering workflow used the `push` event, concluded successfully,
+came from this repository's `main` branch, and identifies the exact trusted
+head SHA. It never runs for pull request CI, consumes no artifacts or caches
+from the triggering workflow, and never checks out a pull request head.
 
 ### `release-label`
 
@@ -122,17 +136,20 @@ The job runs on the fixed `macos-15` runner label instead of mutable
 `macos-latest` and uses an immutable commit SHA for `actions/checkout`. It
 performs these steps in one job and one SwiftPM build configuration:
 
-1. Assert that the runner provides `xcbeautify` and print its version.
+1. Assert that the runner provides the required tools and record `sw_vers`,
+   Xcode, Swift, `xcbeautify`, Git, and `jq` versions.
 2. Run `sh scripts/validate-documentation.sh`.
 3. Run `sh scripts/test-release-contract.sh`.
-4. Compile package sources and the test bundle once:
+4. Run `sh scripts/test-publish-release.sh` against disposable local Git
+   repositories and fake GitHub/sleep adapters.
+5. Compile package sources and the test bundle once:
 
    ```sh
    set -o pipefail
    swift build --build-tests 2>&1 | xcbeautify --renderer github-actions
    ```
 
-5. Execute the already-built test bundle without recompilation:
+6. Execute the already-built test bundle without recompilation:
 
    ```sh
    set -o pipefail
@@ -160,9 +177,12 @@ semantics; a future reproducibility requirement would change that trade-off.
 
 ### `release`
 
-The release job depends on successful `release-label` and `build-and-test`
-jobs. It runs only for a push to `main` whose validated bump output is nonempty.
-Pull request runs therefore never receive publication permission.
+The release job exists only in `.github/workflows/release.yml`. A successful CI
+`workflow_run` for a push to `main` is its publication gate for the exact
+`github.event.workflow_run.head_sha`. The job independently reconstructs the
+associated pull request's merge-time labels and exits successfully without
+write operations when the validated bump is empty. Pull request runs therefore
+never receive publication permission.
 
 The job runs on the fixed `ubuntu-24.04` runner label, receives
 `contents: write`, `issues: read`, and `pull-requests: read`, and fetches the
@@ -171,33 +191,44 @@ complete tag history. It then:
 1. Revalidates the merge-time label decision and identifies the pull request's
    `merge_commit_sha`, which GitHub defines as the commit that updated the base
    branch for merge, squash, and rebase merge methods. The value must equal
-   `github.sha`; otherwise publication fails rather than tagging an unverified
-   commit.
+   `github.event.workflow_run.head_sha`; otherwise publication fails rather
+   than tagging an unverified commit.
 2. Finds strict stable `X.Y.Z` tags that already point to that commit.
 3. Fails if more than one stable tag points to the commit.
-4. If one stable tag points to the commit, treats it only as a retry candidate:
-   it must be the numerically highest stable tag and must equal the approved
-   bump from the preceding stable tag, which must already have a published
-   GitHub Release.
-5. If no stable tag points to the commit, checks the merged pull requests whose
-   `merge_commit_sha` values are strict ancestors after the latest published
-   stable release. It uses paginated merged-pull-request data and Git ancestry,
-   not API return order. Any earlier pull request carrying a valid SemVer label
-   at merge must already have a consistent published release; an invalid
-   release-label set fails immediately. The job polls this condition for up to
-   15 minutes, then fails with the blocking pull request and expected recovery
-   action instead of publishing out of order.
-6. Finds the numerically highest strict stable tag, verifies that it has a
-   published GitHub Release and is an ancestor of the current merge commit,
-   then computes the next version with a deterministic repository shell script.
-7. Creates and pushes an unprefixed lightweight tag on the exact verified
+4. If one stable tag and its GitHub Release already point to the commit,
+   validates that its numeric predecessor is a published stable Release on the
+   same strict `main` ancestry, validates every intervening qualifying pull
+   request, and exits successfully as a completed retry, even when newer
+   descendant releases now exist.
+5. If one stable tag points to the commit but its GitHub Release is missing,
+   treats it as a partial retry candidate: it must be the numerically highest
+   stable tag and must equal the approved bump from the preceding stable tag,
+   which must already have a published GitHub Release.
+6. If no stable tag points to the commit, selects the numerically highest
+   published stable tag that is a strict ancestor as the initial baseline,
+   then checks merged pull requests after that baseline through the target. It
+   uses paginated merged-pull-request data and Git ancestry, not API return
+   order. A consistent higher tag without its Release on an earlier qualifying
+   ancestor is pending and causes `wait`; an unexpected higher tag, wrong bump,
+   divergent tag, or draft/prerelease state fails. Any earlier pull request
+   carrying a valid SemVer label at merge must reach a consistent published
+   release before the target can publish. The job polls this condition for up
+   to 15 minutes, then fails with the blocking pull request and expected
+   recovery action instead of publishing out of order.
+7. After the predecessor wait, force-refreshes remote tags, re-reads GitHub
+   Releases, and repeats the release-state checks so version calculation never
+   uses a stale runner checkout.
+8. Uses the rolling published predecessor established by the ancestry scan,
+   verifies its tag and GitHub Release again, then computes the next version
+   with a deterministic repository shell script.
+9. Creates and pushes an unprefixed lightweight tag on the exact verified
    commit when the candidate is absent, preserving the repository's existing
    tag style.
-8. Immediately publishes a GitHub Release whose tag and title are the computed
+10. Immediately publishes a GitHub Release whose tag and title are the computed
    version, using generated notes from the preceding stable tag.
 
-The release job never rebuilds the package: its dependency on
-`build-and-test` is the publication gate for the exact `github.sha`.
+The release job never rebuilds the package: the successful triggering CI
+workflow is the publication gate for the exact head SHA.
 
 ## Generated Release Notes
 
@@ -226,18 +257,43 @@ Release policy is kept out of opaque inline workflow expressions:
   unprefixed stable tags;
 - `scripts/next-semver.sh` accepts one strict stable version and one supported
   bump, then prints the next strict stable version;
+- `scripts/plan-release.sh` consumes normalized pull request, tag, release, and
+  Git ancestry state and returns `noop`, `wait`, `resume`, or `create` with the
+  exact previous version, candidate version, and blocking pull request when
+  applicable;
+- `scripts/release-context-for-sha.sh` is the read-only GitHub adapter that
+  paginates commit association and issue timeline data, then invokes the pure
+  label policy for the exact merge SHA;
+- `scripts/publish-release.sh` is the trusted GitHub adapter: it paginates and
+  normalizes API state, polls the pure planner, refreshes state immediately
+  before mutation, creates an exact lightweight tag ref, generates notes, and
+  publishes the immutable Release;
 - `scripts/test-release-contract.sh` exercises the release-label and version
   matrices without network access or GitHub state.
+- `scripts/test-publish-release.sh` executes the trusted publisher against
+  disposable local Git repositories and fake GitHub/sleep adapters.
 
 Unrelated labels are ignored defensively, but any label beginning with
 `semver:` that is not one of the three supported values fails validation. The
-tests cover zero, one, unrelated, unsupported SemVer, and conflicting labels;
+tests cover zero, one, duplicate, unrelated, unsupported SemVer, and
+conflicting labels;
 label addition and removal before and after the merge boundary; major, minor,
 and patch transitions; malformed versions; unsupported bump values; and the
 current `0.2.0` transition examples. Tag-discovery tests prove that arbitrary
 tags, `v`-prefixed versions, and prereleases are ignored, while absence of any
-strict stable baseline fails. Scripts use POSIX shell-compatible constructs and
-add no package or runtime dependency.
+strict stable baseline fails. Fixture-driven state tests cover predecessor
+selection, completed old reruns, partial-tag recovery, stale-ref refresh,
+conflicting tag ownership, and rapid releases with different bump types.
+Disposable local-Git publisher tests replace `gh` and `sleep` to cover no-op,
+create, resume, bounded wait, stale-state refresh, HTTP 422 ref races, non-422
+failures, partial Release retry, invalid ancestry metadata, and annotated-tag
+rejection without contacting GitHub.
+Pure policy scripts use POSIX shell-compatible constructs and add no dependency
+to the Swift package or its runtime products. The ancestry-aware planner
+requires a full-history Git checkout and runner-provided `git`. GitHub adapters
+additionally require runner-provided `gh` and `jq`; CI presentation requires
+runner-provided `xcbeautify`. Workflows assert tool presence and record versions
+so runner-image drift is visible.
 
 ## Failure, Retry, and Ordering
 
@@ -267,20 +323,29 @@ The workflow fails closed:
 
 Tag creation and GitHub Release creation are separate GitHub operations and
 cannot be atomic. If tag creation succeeds but release publication fails, a
-rerun detects the stable tag already pointing to `github.sha`, proves that it
-is exactly the expected bump from the preceding version, and creates the
-missing release instead of incrementing again. If both already exist
-consistently, the rerun succeeds without duplicating or changing them. A
-mismatched existing tag or release requires manual investigation.
+rerun detects the stable tag already pointing to the triggering CI head SHA,
+proves that it is exactly the expected bump from the preceding version, and
+creates the missing release instead of incrementing again. If both already
+exist consistently, any later rerun succeeds without duplicating or changing
+them, even after newer releases have been published. A mismatched existing tag
+or release requires manual investigation.
 
 ## Security and Permissions
 
-The workflow declares `contents: read` by default and grants write access only
-to the `release` job on trusted `push` events. Read-only issue and pull request
-permissions are added only where timeline reconstruction requires them. It
-does not use `pull_request_target`, repository secrets, or a write-capable token
-while executing pull request code. Third-party actions are avoided; the
-official checkout action is pinned to an immutable commit SHA.
+The CI workflow declares `contents: read` by default and never contains a
+write-capable job. This prevents a same-repository pull request from modifying
+a job condition and obtaining a write token before review.
+
+The separate publication workflow exists on the default branch and receives
+`contents: write` only after a successful CI `workflow_run` for a trusted push
+to `main`. It rechecks the triggering repository, event, branch, conclusion,
+and head SHA before checkout. It does not download triggering-workflow
+artifacts, restore its caches, use `pull_request_target`, or check out untrusted
+pull request code. Read-only issue and pull request permissions are added only
+where timeline reconstruction requires them.
+
+Third-party actions are avoided; the official checkout action is pinned to an
+immutable commit SHA in both workflows.
 
 The automatically supplied `GITHUB_TOKEN` publishes tags and releases. No
 personal access token or long-lived release credential is introduced.
@@ -298,10 +363,11 @@ authorizes publication after merge, and retains Conventional Commits as a local
 rule. `AGENTS.md` routes release work to the guide, and `docs/README.md` lists
 the guide in the documentation map.
 
-`scripts/validate-documentation.sh` will require the new guide, workflow,
-release configuration, and release scripts; verify the stable label names and
-required checks; and reject references that present Gitlint as a GitHub merge
-gate. It will also reject the three obsolete workflow files after migration.
+`scripts/validate-documentation.sh` will require the new guide, both workflow
+files, release configuration, and release scripts; verify the stable label
+names, required checks, read-only CI boundary, and trusted publication trigger;
+and reject references that present Gitlint as a GitHub merge gate. It will also
+reject the three obsolete workflow files after migration.
 
 ## Repository Enforcement
 
@@ -347,10 +413,11 @@ the first end-to-end verification of tag and GitHub Release publication.
 
 ## Scope
 
-This change owns CI workflow consolidation, readable SwiftPM output, compiled
-test reuse, SemVer label validation, stable tag and GitHub Release publication,
-release documentation, release-contract tests, repository labels, and required
-status checks.
+This change owns read-only CI workflow consolidation, a separate privileged
+publication workflow, readable SwiftPM output, compiled test reuse, SemVer
+label validation, stable tag and GitHub Release publication, release
+documentation, release-contract tests, repository labels, and required status
+checks.
 
 It does not change Swift source, public API, deployment targets,
 `swift-tools-version`, package dependencies, historical tags or releases,

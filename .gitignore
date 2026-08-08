@@ -65,6 +65,9 @@ fastlane/test_output
 # macOS
 .DS_Store
 
+# Local Git worktrees
+.worktrees/
+
 # Xcode Derived Data
 DerivedData/
 

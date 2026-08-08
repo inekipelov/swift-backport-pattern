@@ -335,6 +335,40 @@ write_planner_state \
     "$(tag_row 0.2.1 "$missing_sha")" "$(release_row 0.2.1 missing)"
 assert_plan_failure 'missing tag commit object' "$patch_sha" patch
 
+adapter_sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+fake_gh=scripts/test-fixtures/fake-gh.sh
+
+adapter_output=$(env FAKE_GH_SCENARIO=zero FAKE_TARGET_SHA="$adapter_sha" \
+    GH_BIN="$fake_gh" sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha")
+assert_equal 'zero eligible associated PRs' 'pr_number=
+merge_sha=
+bump=' "$adapter_output"
+
+adapter_output=$(env FAKE_GH_SCENARIO=one FAKE_TARGET_SHA="$adapter_sha" \
+    GH_BIN="$fake_gh" sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha")
+assert_equal 'one exact PR with paginated timeline' "pr_number=42
+merge_sha=$adapter_sha
+bump=patch" "$adapter_output"
+
+assert_failure 'multiple exact associated PRs' env FAKE_GH_SCENARIO=multiple \
+    FAKE_TARGET_SHA="$adapter_sha" GH_BIN="$fake_gh" \
+    sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha"
+assert_failure 'merge SHA association mismatch' env FAKE_GH_SCENARIO=mismatch \
+    FAKE_TARGET_SHA="$adapter_sha" GH_BIN="$fake_gh" \
+    sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha"
+assert_failure 'missing merge timeline event' env FAKE_GH_SCENARIO=missing_merge \
+    FAKE_TARGET_SHA="$adapter_sha" GH_BIN="$fake_gh" \
+    sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha"
+assert_failure 'multiple merge timeline events' env FAKE_GH_SCENARIO=multiple_merge \
+    FAKE_TARGET_SHA="$adapter_sha" GH_BIN="$fake_gh" \
+    sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha"
+assert_failure 'association API failure' env FAKE_GH_SCENARIO=association_failure \
+    FAKE_TARGET_SHA="$adapter_sha" GH_BIN="$fake_gh" \
+    sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha"
+assert_failure 'timeline API failure' env FAKE_GH_SCENARIO=timeline_failure \
+    FAKE_TARGET_SHA="$adapter_sha" GH_BIN="$fake_gh" \
+    sh scripts/release-context-for-sha.sh owner/repository "$adapter_sha"
+
 if [ "$failures" -ne 0 ]; then
     exit 1
 fi

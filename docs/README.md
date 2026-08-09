@@ -25,4 +25,4 @@ When documentation conflicts, use this order:
 5. `.agents/skills/backport-adoption/SKILL.md` for the repeatable agent workflow.
 6. Root `README.md` for the concise overview.
 
-Planning records under `docs/superpowers/` explain repository changes. They are not adoption policy.
+Planning records under `docs/superpowers/` explain repository changes. They are not active contribution, adoption, or release policy.

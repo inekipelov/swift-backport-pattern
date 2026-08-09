@@ -30,6 +30,15 @@ require_text() {
     fi
 }
 
+require_line() {
+    file=$1
+    line=$2
+
+    if [ -f "$file" ] && ! grep -Fqx -- "$line" "$file"; then
+        fail "$file must contain exact line: $line"
+    fi
+}
+
 reject_text() {
     file=$1
     text=$2
@@ -113,8 +122,41 @@ reject_text CONTRIBUTING.md 'GitHub Build, Test, and Gitlint checks are successf
 require_text README.md '[Contributing](CONTRIBUTING.md)'
 require_text docs/README.md '[Contribution Workflow](../CONTRIBUTING.md)'
 require_text docs/README.md '[Release Guide](RELEASING.md)'
+require_line docs/README.md '3. `RELEASING.md` for release authorization, versioning, publication, and recovery policy.'
+require_line docs/README.md 'Planning records under `docs/superpowers/` explain repository changes. They are not active contribution, adoption, or release policy.'
 require_text AGENTS.md '`CONTRIBUTING.md` owns the contribution workflow'
-require_text AGENTS.md '`docs/RELEASING.md` owns release authorization'
+require_line AGENTS.md '`docs/RELEASING.md` owns release authorization, SemVer calculation, publication, and recovery policy.'
+require_line AGENTS.md '- For release labels, version calculation, tag or GitHub Release work, read `docs/RELEASING.md` and preserve its human-authorization boundary.'
+
+require_line docs/RELEASING.md '# Releasing'
+require_line docs/RELEASING.md '## Release Authorization'
+require_line docs/RELEASING.md '## Version Calculation'
+require_line docs/RELEASING.md '## CI and Publication Boundary'
+require_line docs/RELEASING.md '## Generated Release Notes'
+require_line docs/RELEASING.md '## Ordering and Retries'
+require_line docs/RELEASING.md '## Failure Recovery'
+require_line docs/RELEASING.md '## Permissions and Human Authority'
+require_line docs/RELEASING.md '## Verification Boundary'
+require_line docs/RELEASING.md '| `semver:major` | `1.0.0` |'
+require_line docs/RELEASING.md '| `semver:minor` | `0.3.0` |'
+require_line docs/RELEASING.md '| `semver:patch` | `0.2.1` |'
+require_line docs/RELEASING.md "\`github.event.workflow.path == '.github/workflows/ci.yml'\` and"
+require_line docs/RELEASING.md '`github.event.workflow.id == github.event.workflow_run.workflow_id` before'
+require_line docs/RELEASING.md 'GitHub loads and orchestrates the trusted `.github/workflows/release.yml` definition from the default branch.'
+require_line docs/RELEASING.md 'Repository publisher scripts, including `scripts/publish-release.sh`, execute from the current trusted `main` checkout.'
+require_line docs/RELEASING.md '`workflow_run.head_sha` is historical `TARGET_SHA` data only; it is never checked out or executed.'
+require_line docs/RELEASING.md 'No artifacts or caches from the triggering workflow are consumed.'
+reject_text docs/RELEASING.md 'Release workflow code and `scripts/publish-release.sh` execute'
+require_text docs/RELEASING.md 'Tags and Releases are refreshed after each wait and once'
+require_text docs/RELEASING.md 'more before the mutation phase.'
+require_line docs/RELEASING.md 'Immediately before the GitHub Release POST, the publisher separately revalidates only the exact remote lightweight tag and target SHA.'
+require_line docs/RELEASING.md 'Only an existing-reference HTTP 422 from tag creation enters recovery.'
+require_text docs/RELEASING.md 'consistent `action`, `previous`, and `version` tuple.'
+require_text docs/RELEASING.md 'must match the approved plan, while `action` must resolve to `resume` or a'
+require_line docs/RELEASING.md 'Selecting exactly one SemVer label is the human authorization for automatic publication after merge.'
+require_text docs/RELEASING.md 'An AI agent may add or remove a release label, rerun a release, or otherwise'
+require_text docs/RELEASING.md 'first production end-to-end publication test'
+require_text docs/RELEASING.md 'Report that path as unverified until it occurs.'
 
 require_text .github/workflows/ci.yml 'contents: read'
 reject_text .github/workflows/ci.yml 'contents: write'

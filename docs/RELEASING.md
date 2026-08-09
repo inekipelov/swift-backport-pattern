@@ -50,21 +50,23 @@ ancestry. Tags are never overwritten or force-pushed.
 local Conventional Commit rule and is not a GitHub Actions check.
 
 The release workflow accepts only a successful push run for `main` from the
-exact canonical `.github/workflows/ci.yml`. It binds the triggering workflow's
-path and workflow ID before granting its release job `contents: write`.
+exact canonical `.github/workflows/ci.yml`. The gate requires
+`github.event.workflow.path == '.github/workflows/ci.yml'` and
+`github.event.workflow.id == github.event.workflow_run.workflow_id` before
+granting its release job `contents: write`.
 
-Release workflow code and `scripts/publish-release.sh` execute from the current
-trusted `main` checkout. `workflow_run.head_sha` is passed only as
-`TARGET_SHA`, the historical release target; that SHA is never checked out or
-executed. The publisher freshly fetches `origin/main`, requires the trusted
-checkout to equal it, and requires the target to exist and remain its ancestor.
-It consumes no artifacts or caches from the triggering workflow.
+GitHub loads and orchestrates the trusted `.github/workflows/release.yml` definition from the default branch.
+Repository publisher scripts, including `scripts/publish-release.sh`, execute from the current trusted `main` checkout.
+`workflow_run.head_sha` is historical `TARGET_SHA` data only; it is never checked out or executed.
+The publisher freshly fetches `origin/main`, requires the trusted checkout to
+equal it, and requires the target to exist and remain its ancestor.
+No artifacts or caches from the triggering workflow are consumed.
 
-Before entering mutation, publication revalidates the associated pull request,
-merge SHA, merge-time label, Git ancestry, tags, Release state, and complete
-release plan. Tag state is refreshed with pruning. Immediately before creating
-a GitHub Release, the publisher verifies through GitHub that the exact remote
-tag is lightweight and still points to `TARGET_SHA`.
+Before the mutation phase, the publisher prune-refreshes tags, refreshes
+Releases, checks the current-main and target ancestry, and recomputes the
+complete plan from verified pull request state. This full tags-and-Releases
+refresh and replan gates entry into the mutation phase.
+Immediately before the GitHub Release POST, the publisher separately revalidates only the exact remote lightweight tag and target SHA.
 
 ## Generated Release Notes
 
@@ -78,18 +80,18 @@ Historical Release descriptions are not regenerated.
 Every qualifying merge has its own idempotent release run. A later merge waits
 up to 15 minutes while an earlier qualifying ancestor is unpublished. Ordering
 comes from Git ancestry, not workflow queue order, pull request number, API
-order, or timestamps. Tags and Releases are refreshed after every wait and
-again immediately before mutation.
+order, or timestamps. Tags and Releases are refreshed after each wait and once
+more before the mutation phase.
 
 A completed old rerun is a no-op even when newer descendant Releases exist. A
 partial target tag can be resumed only when it is the highest stable tag and is
 the exact approved bump from a published predecessor.
 
-If concurrent publication reports HTTP 422 while creating a tag, recovery is
-allowed only when GitHub reports that the reference already exists. The
-publisher then refreshes all state and requires the new plan's `action`,
-`previous`, and `version` to remain consistent with the approved plan. Every
-other 422 response fails without entering recovery.
+Only an existing-reference HTTP 422 from tag creation enters recovery.
+After refreshing tags and Releases and recomputing the full plan, recovery requires a
+consistent `action`, `previous`, and `version` tuple. `previous` and `version`
+must match the approved plan, while `action` must resolve to `resume` or a
+verified `noop`. Every other 422 response fails without entering recovery.
 
 ## Failure Recovery
 
@@ -108,9 +110,9 @@ change; do not move or force-push a stable tag.
 
 The repository `GITHUB_TOKEN` creates tags and Releases; no personal token is
 required. CI is read-only, and only the trusted Release job receives
-`contents: write`. Selecting exactly one SemVer label is the human
-authorization for automatic publication after merge; merging the pull request
-does not require another release prompt.
+`contents: write`.
+Selecting exactly one SemVer label is the human authorization for automatic publication after merge.
+Publication does not request another release confirmation.
 
 An AI agent may add or remove a release label, rerun a release, or otherwise
 change release state only after explicit human authorization. Merge still
@@ -123,6 +125,5 @@ ordering, retries, API failures, and tag or Release mutations with disposable
 Git repositories and fake GitHub commands. Pull request CI covers
 documentation, compilation, and tests without write permission.
 
-The first future merge carrying exactly one supported `semver:*` label is the
-first production end-to-end publication test. Report that path as unverified
-until it occurs.
+The first future merge carrying exactly one supported `semver:*` label is the first production end-to-end publication test.
+Report that path as unverified until it occurs.

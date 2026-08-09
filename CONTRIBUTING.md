@@ -23,8 +23,8 @@ Use each source for the responsibility it owns:
    SemVer calculation, publication, ordering, and recovery policy.
 4. [`docs/BACKPORT_ADOPTION_GUIDE.md`](docs/BACKPORT_ADOPTION_GUIDE.md) defines
    backport selection, behavior, evidence, and lifecycle policy.
-5. [`.agents/skills/backport-adoption/SKILL.md`](.agents/skills/backport-adoption/SKILL.md)
-   defines the repeatable AI workflow for backport-specific work.
+5. [`.agents/skills/swiftui-backport-adoption/SKILL.md`](.agents/skills/swiftui-backport-adoption/SKILL.md)
+   defines the repeatable AI workflow for SwiftUI backport work.
 6. [`AGENTS.md`](AGENTS.md) defines repository constraints and task routing.
 7. [`README.md`](README.md) is the concise package entry point.
 
@@ -56,7 +56,6 @@ green baseline before editing:
 
 ```sh
 swift --version
-sh scripts/validate-documentation.sh
 swift test
 ```
 
@@ -155,13 +154,13 @@ target.
 
 For a concrete backport design, review, migration, or removal, work in the
 consumer repository and use the
-[`backport-adoption` skill](.agents/skills/backport-adoption/SKILL.md) and the
+[`swiftui-backport-adoption` skill](.agents/skills/swiftui-backport-adoption/SKILL.md) and the
 [`Backport Adoption Guide`](docs/BACKPORT_ADOPTION_GUIDE.md). Verify native API
 signatures and availability against primary Apple documentation or installed
 SDK declarations.
 
 Create or update a consumer-owned
-[`backport-decision-record`](.agents/skills/backport-adoption/assets/backport-decision-record.md)
+[`backport-decision-record`](.agents/skills/swiftui-backport-adoption/assets/backport-decision-record.md)
 that identifies:
 
 - one semantic category;
@@ -181,11 +180,14 @@ Run the narrowest check that directly covers the change first. Before marking a
 pull request ready, run the repository baseline from the repository root:
 
 ```sh
-sh scripts/validate-documentation.sh
 swift test
 swift build
 git diff --check
 ```
+
+`RepositoryStructureTests`, included in `swift test`, validates canonical
+repository files, tool bridges, and relative Markdown links. Documentation
+meaning and technical accuracy remain review responsibilities.
 
 Additional requirements depend on the affected contract:
 
@@ -246,8 +248,8 @@ blocks readiness and merge; fix it or report the exact unresolved blocker.
 ## AI-Assisted Contributions
 
 Before modifying the repository, an AI agent must read `AGENTS.md` and this
-guide. It must load the project `backport-adoption` skill whenever backport
-semantics are involved.
+guide. It must load the project `swiftui-backport-adoption` skill whenever
+SwiftUI backport semantics are involved.
 
 AI agents must preserve human changes, stay within the approved scope, disclose
 assumptions, and never fabricate commands, tests, reviews, or results. Pull

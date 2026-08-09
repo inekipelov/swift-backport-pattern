@@ -10,7 +10,7 @@ Use sources in this order when they conflict:
 
 1. Public declarations under `Sources/` and executable behavior under `Tests/`.
 2. `docs/BACKPORT_ADOPTION_GUIDE.md` for backport selection and lifecycle rules.
-3. `.agents/skills/backport-adoption/SKILL.md` for the repeatable create, review, migration, and removal workflow.
+3. `.agents/skills/swiftui-backport-adoption/SKILL.md` for the repeatable SwiftUI create, review, migration, and removal workflow.
 4. `README.md` for the concise public entry point.
 
 `CONTRIBUTING.md` owns the contribution workflow, including branches, pull requests, review, and merge requirements.
@@ -21,7 +21,7 @@ Use sources in this order when they conflict:
 
 - Before changing the repository, read `CONTRIBUTING.md` and follow its scope, branch, verification, review, and merge workflow.
 - For package API changes, inspect `Package.swift`, `Sources/`, and affected tests first; keep changes limited to the reusable namespace mechanism.
-- For a concrete backport design, review, migration, or removal, work in the consumer repository and use the `backport-adoption` skill plus the adoption guide.
+- For a concrete SwiftUI backport design, review, migration, or removal, work in the consumer repository and use the `swiftui-backport-adoption` skill plus the adoption guide.
 - If a concrete backport is requested in this repository, stop and request the consumer repository and its product context instead of adding the API here.
 - For documentation changes, preserve stable category identifiers and update compiled examples when code changes.
 - For release labels, version calculation, tag or GitHub Release work, read `docs/RELEASING.md` and preserve its human-authorization boundary.
@@ -44,18 +44,20 @@ Use sources in this order when they conflict:
 - Label non-executable code as illustrative pseudocode and executable compatibility examples as synthetic documentation fixtures.
 - Use semantic identifiers: `redirect-fallback`, `compatibility-type`, `behavioral-polyfill`, and `no-op-fallback`.
 - Keep `CLAUDE.md` exactly `@AGENTS.md`; do not duplicate repository rules in tool-specific files.
-- Keep the canonical project skill under `.agents/skills/backport-adoption`.
+- Keep the canonical project skill under `.agents/skills/swiftui-backport-adoption`.
 
 ## Verification
 
 Run the narrowest relevant checks, then the full affected set:
 
 ```sh
-sh scripts/validate-documentation.sh
 swift test
 swift build
 git diff --check
 ```
+
+`RepositoryStructureTests` covers canonical repository files, tool bridges, and
+relative Markdown links without constraining documentation wording.
 
 Report platform branches that cannot be executed locally or in CI. Do not present compile coverage as behavior coverage.
 

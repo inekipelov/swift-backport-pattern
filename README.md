@@ -66,6 +66,40 @@ view unchanged. The executable copy lives in
 [`Tests/DocumentationExamples.swift`](Tests/DocumentationExamples.swift); it is
 a consumer-reference implementation, not an API shipped by this package.
 
+The four categories have concrete consumer examples adapted from
+[`swiftui-liquid-glass-backport`](https://github.com/inekipelov/swiftui-liquid-glass-backport):
+
+| Category | Example | Fallback contract |
+| --- | --- | --- |
+| `redirect-fallback` | `.backport.safeAreaBar` | Use `safeAreaInset`; preserve the bar and layout space, but not progressive blur |
+| `compatibility-type` | `Backported.SearchToolbarBehavior` | Store a value-like representation and bridge it to SwiftUI only on Apple OS 26+ |
+| `behavioral-polyfill` | `.backport.glassEffect` | On legacy iOS, macOS, tvOS, and watchOS, rebuild the visual hierarchy with material, tint, border, and shadow; visionOS remains unchanged |
+| `no-op-fallback` | `.backport.backgroundExtensionEffect` | Preserve the original view when the effect is only progressive enhancement |
+
+```swift
+ScrollView { Text("Results") }
+    .backport.safeAreaBar(edge: .bottom) {
+        Button("Show filters") {}
+    }
+
+let behavior: Backported.SearchToolbarBehavior = .automatic
+Text("Search results")
+    .backport.searchToolbarBehavior(behavior)
+
+Text("Featured")
+    .backport.glassEffect(
+        .regular.tint(.blue),
+        in: RoundedRectangle(cornerRadius: 12)
+    )
+
+Image(systemName: "photo")
+    .backport.backgroundExtensionEffect()
+```
+
+These APIs remain consumer-owned; the package ships only their namespace.
+Their compact implementations and compiled call sites live in
+[`Tests/DocumentationExamples.swift`](Tests/DocumentationExamples.swift).
+
 ## Documentation
 
 Use the guide that matches the task:

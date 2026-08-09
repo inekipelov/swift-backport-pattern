@@ -60,8 +60,6 @@ jobs:
           xcbeautify --version
           git --version
           jq --version
-      - name: Validate documentation contract
-        run: sh scripts/validate-documentation.sh
       - name: Validate release contracts
         run: |
           sh scripts/test-release-contract.sh

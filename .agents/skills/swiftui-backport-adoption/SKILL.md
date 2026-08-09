@@ -1,9 +1,9 @@
 ---
-name: backport-adoption
-description: Use when creating, reviewing, migrating, or removing a Swift or SwiftUI compatibility API that uses Backport, Backported, availability checks, fallback behavior, polyfills, or OS-version bridging.
+name: swiftui-backport-adoption
+description: Use when creating, reviewing, migrating, or removing a SwiftUI compatibility API that uses Backport, Backported, availability checks, fallback behavior, polyfills, or OS-version bridging.
 ---
 
-# Backport Adoption
+# SwiftUI Backport Adoption
 
 ## Core Principle
 
@@ -19,11 +19,16 @@ Preserve one stable call site while making every native/fallback semantic differ
 ## Establish Context
 
 1. Read `docs/BACKPORT_ADOPTION_GUIDE.md` when present.
-2. Inspect consumer deployment targets, platforms, call sites, tests, and ownership.
+2. Inspect consumer deployment targets, platforms, SwiftUI call sites, builders, tests, and ownership.
 3. Verify the native signature and availability using Apple documentation or SDK declarations.
 4. Request missing product semantics when category selection would be speculative.
 
 ## Select One Category
+
+Read [references/category-examples.md](references/category-examples.md) before
+choosing. It contains source-grounded SwiftUI implementations and call sites
+for all four categories. Adapt their availability and behavior contracts to
+the consumer; never copy a fallback merely because its API shape matches.
 
 | Category | Observable condition |
 | --- | --- |

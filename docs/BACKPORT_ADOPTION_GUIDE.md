@@ -50,34 +50,35 @@ Definitions:
 - **Safe degrade:** no effect on correctness, accessibility, security, or data integrity, with acceptable interaction and layout differences.
 - **Required parity:** documented fallback deltas are not acceptable for the product or platform contract.
 
-## 3. Source-Grounded Compiled Example
+## 3. Source-Grounded Compiled Examples
 
-[`Tests/DocumentationExamples.swift`](../Tests/DocumentationExamples.swift)
-contains a consumer-reference implementation of
-[`View.badge(_:)`](https://developer.apple.com/documentation/swiftui/view/badge(_:)-8adyq),
-the concrete SwiftUI need in Dave DeLong's original Backport example:
+The following examples are reduced from the consumer-owned
+[`swiftui-liquid-glass-backport`](https://github.com/inekipelov/swiftui-liquid-glass-backport)
+implementations. Their executable adaptations live in
+[`Tests/DocumentationExamples.swift`](../Tests/DocumentationExamples.swift),
+and the complete category-oriented examples are available to agents in the
+[`swiftui-backport-adoption` reference](../.agents/skills/swiftui-backport-adoption/references/category-examples.md).
 
-```swift
-view.backport.badge(unreadCount)
-```
+| Category | Consumer API | Why it fits | Explicit fallback delta |
+| --- | --- | --- | --- |
+| `redirect-fallback` | `View.backport.safeAreaBar` | Redirects to the legacy `safeAreaInset` API | Keeps the bar and reserved layout space, but not native progressive blur |
+| `compatibility-type` | `Backported.SearchToolbarBehavior` | Stores cases without constructing unavailable `SwiftUI.SearchToolbarBehavior` | Native conversion exists only behind Apple OS 26 availability; platform-specific cases remain explicit |
+| `behavioral-polyfill` | `View.backport.glassEffect` | Builds custom legacy behavior from material, tint, border, clipping, and shadow on iOS, macOS, tvOS, and watchOS | Approximates native rendering and interaction; the consumer's visionOS branch is a separately documented no-op |
+| `no-op-fallback` | `View.backport.backgroundExtensionEffect` | The effect is progressive enhancement | Returns the original view before Apple OS 26 and provides no background extension effect |
 
-Apple documents `badge(_:)` as optional, supplementary information. The
-example therefore selects `no-op-fallback`: it calls the native API on
-iOS/iPadOS and Mac Catalyst 15+, macOS 12+, and visionOS 1+, and otherwise
-returns the original view unchanged. Do not use this fallback when the badge
-communicates required status, navigation, accessibility information, or an
-action the user must discover.
+The README shows each unified call site. The fixtures prove that those API
+shapes and availability-gated native branches compile on the current SDK; they
+do not prove visual, interaction, accessibility, or fallback-runtime behavior.
 
-The compiled fixture verifies the unified call site and availability-gated
-construction on the current SDK. It is not visual, interaction, or
-accessibility evidence, and its fallback branch must be exercised by the
-consumer's platform test plan before adopting the shim in production.
+The original `View.badge(_:)` fixture remains a second `no-op-fallback`
+example. It is valid only when the badge is supplementary; a required status,
+navigation cue, accessibility value, or action needs another fallback.
 
 ## 4. Mandatory Decision Record
 
 Create a decision record for every public backport. For internal backports, use the same record whenever fallback behavior can affect a user or more than one module.
 
-Start from the [Backport Decision Record](../.agents/skills/backport-adoption/assets/backport-decision-record.md) and record:
+Start from the [Backport Decision Record](../.agents/skills/swiftui-backport-adoption/assets/backport-decision-record.md) and record:
 
 1. Lifecycle status, native API, availability, consumer deployment targets, and supported platforms.
 2. Selected semantic category and rejected alternatives.

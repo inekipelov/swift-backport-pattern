@@ -48,14 +48,25 @@ If links are unavailable in the consumer environment, keep a small Claude wrappe
 
 Before using the skill, provide or let the agent discover:
 
+- the consumer repository and module that own the concrete compatibility API;
 - minimum deployment targets and supported platforms;
 - the native API declaration and availability;
 - required behavior and acceptable semantic deltas;
-- affected call sites and module ownership;
+- affected call sites and helpers;
 - executable build, test, snapshot, accessibility, or UI-validation commands;
-- the intended release/removal policy.
+- the repository's decision-record convention and the path selected for this
+  decision;
+- a named owner and planned removal release;
+- compiler and toolchain availability for checking the supported platform
+  branches; and
+- the warning policy: whether compiler-enforced deprecation is expected, and
+  how warnings initiate removal work.
 
-The skill cannot infer missing product semantics or platform validation from this pattern package alone.
+The skill cannot infer missing product semantics, ownership, lifecycle, or
+platform validation from this pattern package alone. When a material semantic,
+ownership, verification, or lifecycle input is missing, it must return a
+`Blocked` decision handoff: include the readiness table, the exact gap, the
+safe next action, and verified facts rather than speculating or implementing.
 
 ## Official Tool Documentation
 

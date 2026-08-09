@@ -21,10 +21,11 @@ Use each source for the responsibility it owns:
    merged.
 3. The [`Release Guide`](docs/RELEASING.md) defines release authorization,
    SemVer calculation, publication, ordering, and recovery policy.
-4. [`docs/BACKPORT_ADOPTION_GUIDE.md`](docs/BACKPORT_ADOPTION_GUIDE.md) defines
-   backport selection, behavior, evidence, and lifecycle policy.
-5. [`.agents/skills/swiftui-backport-adoption/SKILL.md`](.agents/skills/swiftui-backport-adoption/SKILL.md)
-   defines the repeatable AI workflow for SwiftUI backport work.
+4. [`.agents/skills/swiftui-backport-adoption/SKILL.md`](.agents/skills/swiftui-backport-adoption/SKILL.md)
+   defines the normative repeatable AI workflow for SwiftUI backport work.
+5. [`docs/BACKPORT_ADOPTION_GUIDE.md`](docs/BACKPORT_ADOPTION_GUIDE.md) provides
+   human-readable backport rationale and examples; it does not override the
+   skill workflow.
 6. [`AGENTS.md`](AGENTS.md) defines repository constraints and task routing.
 7. [`README.md`](README.md) is the concise package entry point.
 
@@ -154,10 +155,11 @@ target.
 
 For a concrete backport design, review, migration, or removal, work in the
 consumer repository and use the
-[`swiftui-backport-adoption` skill](.agents/skills/swiftui-backport-adoption/SKILL.md) and the
-[`Backport Adoption Guide`](docs/BACKPORT_ADOPTION_GUIDE.md). Verify native API
-signatures and availability against primary Apple documentation or installed
-SDK declarations.
+[`swiftui-backport-adoption` skill](.agents/skills/swiftui-backport-adoption/SKILL.md)
+as the normative workflow. The [Backport Adoption Guide](docs/BACKPORT_ADOPTION_GUIDE.md)
+provides developer-facing rationale and examples without overriding that
+workflow. Verify native API signatures and availability against primary Apple
+documentation or installed SDK declarations.
 
 Create or update a consumer-owned
 [`backport-decision-record`](.agents/skills/swiftui-backport-adoption/assets/backport-decision-record.md)

@@ -10,6 +10,11 @@ namespace pattern only. Do not add concrete Apple API backports to this
 package's `Sources/`. Concrete implementations, semantic decisions, evidence,
 ownership, and removal records belong in consumer app or package modules.
 
+For the normative repeatable AI workflow, use the
+[`swiftui-backport-adoption` skill](../.agents/skills/swiftui-backport-adoption/SKILL.md).
+This guide provides developer-facing rationale and examples; it does not
+override that workflow.
+
 ## 1. Scope
 
 Before selecting a category, confirm that the target is a consumer repository
@@ -76,16 +81,21 @@ navigation cue, accessibility value, or action needs another fallback.
 
 ## 4. Mandatory Decision Record
 
-Create a decision record for every public backport. For internal backports, use the same record whenever fallback behavior can affect a user or more than one module.
+Create one decision record for every independently removable compatibility
+decision, including internal decisions. When a `Backported` type and its
+consuming modifier can be removed independently, create separate cross-linked
+records with their own categories and removal triggers.
 
 Start from the [Backport Decision Record](../.agents/skills/swiftui-backport-adoption/assets/backport-decision-record.md) and record:
 
-1. Lifecycle status, native API, availability, consumer deployment targets, and supported platforms.
+1. Readiness status for every required consumer input, lifecycle status, native API, availability, consumer deployment targets, and supported platforms.
 2. Selected semantic category and rejected alternatives.
 3. Native and fallback behavior, including semantic deltas.
 4. Correctness, accessibility, security, data-integrity, interaction, and layout risk.
 5. Platform/OS validation matrix and unexecutable gaps.
-6. Owner, decision date, removal trigger, and target release for any deferral.
+6. Compiler lifecycle for each declaration or surface and platform: verified `deprecated`, optional `obsoleted`, and replacement message, or a no-replacement or platform-scoped exception reason.
+7. For a retained-type exception, the unannotated `Backported` type, its independent product value and evidence, every compatibility-only surface to deprecate, its owner, and a product review/removal trigger independent of native availability.
+8. Owner, decision date, removal trigger, and target release for any deferral.
 
 ## 5. Implementation Rules
 
@@ -101,33 +111,72 @@ Start from the [Backport Decision Record](../.agents/skills/swiftui-backport-ado
 10. Keep unrelated convenience APIs outside the backport layer.
 11. Document semantic deltas in API documentation and the decision record.
 
-## 6. Verification Gate
+## 6. Compiler-Enforced Lifecycle
 
-Every public backport requires:
+Apply lifecycle rules declaration by declaration and surface by surface. By
+default, every consumer-owned declaration whose compatibility purpose ends at
+verified native availability receives platform-specific `deprecated` at that
+availability, with a message naming the replacement and removal condition.
 
-1. Compile coverage for native and fallback branches.
-2. At least one fallback behavior assertion or the strongest feasible proxy.
-3. At least one native behavior assertion when the native runtime is available.
-4. Source-stability coverage for the unified `.backport.` or `Backported.` call site.
-5. A platform/OS matrix that records `native`, `fallback`, both, or unexecuted for each supported platform.
-6. Explicit proxy evidence and confidence limits for branches CI cannot execute.
+The sole retained-type exception is a `Backported` type with documented product
+value independent of compatibility. That type may remain unannotated only when
+the decision record names the retained value, supporting evidence, owner, and
+an independent product review/removal trigger. Compatibility-only modifiers,
+native conversions, bridges, compatibility initializers, and similar surfaces
+still receive lifecycle annotations when the compiler can express them. This
+exception does not apply to ordinary backport types or modifiers.
 
-Compilation proves only type and availability correctness. It does not prove visual, interaction, accessibility, or data behavior.
+For every other supported platform or surface, record either that no native
+replacement exists or a platform-scoped reason why the consumer compiler or
+toolchain cannot express the intended lifecycle. Do not use unconditional
+`@available(*, deprecated, ...)` while an older supported target still needs
+the fallback.
 
-## 7. Upgrade and Removal
+`obsoleted` is optional: use it only for a platform-specific declaration or
+when every supported platform shares an aligned removal threshold. Otherwise,
+it can reject a shared call site on one platform while another still requires
+the backport. See [Deprecating your own convenience API](https://swiftwithmajid.com/2026/05/19/deprecating-your-own-convenience-api/)
+for the compiler-reminder pattern.
 
-When every supported deployment target reaches the native API's availability:
+## 7. Verification Gate
+
+Every independently removable compatibility decision requires:
+
+1. Ordinary compatibility-layer and unified-call-site type-checking for every supported platform.
+2. For a retained-type exception, ordinary construction, storage, and product use at and above native availability without a type-level deprecation diagnostic.
+3. Below-`deprecated`, at-`deprecated`, and at-`obsoleted` checks when present, for every annotated compatibility-only surface on platforms with verified lifecycle annotations.
+4. A recorded no-replacement or platform-scoped lifecycle-exception reason for every other supported platform or surface.
+5. Confirmation that platform-specific lifecycle annotations do not reject a shared call site on a platform that still requires it.
+6. Compile coverage for native and fallback branches.
+7. At least one fallback behavior assertion or the strongest feasible proxy.
+8. At least one native behavior assertion when the native runtime is available.
+9. Source-stability coverage for the unified `.backport.` or `Backported.` call site.
+10. A platform/OS matrix that records `native`, `fallback`, both, or unexecuted for each supported platform.
+11. Explicit proxy evidence and confidence limits for branches CI cannot execute.
+
+Compiler diagnostics and compilation prove only type and availability
+correctness. They do not prove visual, interaction, accessibility, or data
+behavior.
+
+## 8. Upgrade and Removal
+
+A deprecation warning after a deployment-target increase starts the removal
+workflow; it does not authorize deletion. Delete a shared compatibility slice
+only after every supported target reaches the native API's availability:
 
 1. Replace backport call sites with the native API while preserving behavior.
-2. Remove the compatibility shim, fallback, bridges, and legacy helpers.
+2. Remove obsolete modifiers, native conversions, bridges, compatibility initializers, fallbacks, and legacy helpers at their recorded triggers.
 3. Remove obsolete tests and documentation; retain native behavior coverage.
-4. Keep a compatibility type only when it still has product value independent of compatibility.
-5. Remove the package dependency only after repository-wide searches prove no other uses remain.
-6. Close the decision record with removal evidence, release, and validation matrix.
+4. Keep only an independently valuable `Backported` type, plus its product-owned tests and documentation, when the retained-type exception is documented and still supported by evidence.
+5. Re-review or remove the retained type only at its separate product trigger; do not tie that trigger to native availability.
+6. Remove the package dependency only after repository-wide searches prove no other uses remain.
+7. Close linked decision records independently with removal evidence, release, and validation matrices.
 
-Complete removal in the first release cycle after the deployment-target change. Record a reason and target release for any deferral.
+Complete compatibility-only surface removal in the first release cycle after
+the deployment-target change. A retained type follows its independent product
+trigger. Record a reason and target release for any deferral.
 
-## 8. Anti-Patterns
+## 9. Anti-Patterns
 
 1. Undocumented differences between native and fallback branches.
 2. One wrapper API representing unrelated semantics.
@@ -135,8 +184,9 @@ Complete removal in the first release cycle after the deployment-target change. 
 4. Compatibility helper with no owner or removal trigger.
 5. Feature-level availability checks duplicated around a unified backport API.
 6. Documentation examples that look executable but omit required types or conversions.
+7. Leaving compatibility-only surfaces unannotated because their `Backported` type has independent product value.
 
-## 9. References
+## 10. References
 
 - Dave DeLong, [Simplifying Backwards Compatibility in Swift](https://davedelong.com/blog/2021/10/09/simplifying-backwards-compatibility-in-swift/)
 - SwiftUI Garden, [Handling different iOS versions in a View body](https://swiftui-garden.com/Articles/Handling-different-iOS-versions-in-a-View-body)

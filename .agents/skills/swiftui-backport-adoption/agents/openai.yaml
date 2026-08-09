@@ -1,4 +1,4 @@
 interface:
   display_name: "SwiftUI Backport Adoption"
-  short_description: "Design and review SwiftUI compatibility APIs"
-  default_prompt: "Use $swiftui-backport-adoption to design or review a SwiftUI compatibility API."
+  short_description: "Create, review, migrate, and remove SwiftUI compatibility APIs"
+  default_prompt: "Use $swiftui-backport-adoption to create, review, migrate, or remove a SwiftUI compatibility API."

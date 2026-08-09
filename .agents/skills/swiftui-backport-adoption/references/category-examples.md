@@ -10,10 +10,43 @@ All snippets assume `import SwiftUI` and `import Backport`.
 
 ## Contents
 
+- [Compiler-enforced lifecycle](#compiler-enforced-lifecycle)
 - [`redirect-fallback`](#redirect-fallback)
 - [`compatibility-type`](#compatibility-type)
 - [`behavioral-polyfill`](#behavioral-polyfill)
 - [`no-op-fallback`](#no-op-fallback)
+
+## Compiler-enforced lifecycle
+
+This reduced declaration is **illustrative consumer pseudocode**, based on the
+consumer-owned `backgroundExtensionEffect()` backport. Its body is intentionally
+omitted, so it is not executable code or an API shipped by
+`swift-backport-pattern`. Before adapting it, verify the native API's exact SDK
+availability, each supported platform, and the consumer's minimum targets.
+
+```swift
+@available(iOS, deprecated: 26.0, message: "Replace .backport.backgroundExtensionEffect() with native .backgroundExtensionEffect() after all minimum targets support it.")
+@available(macOS, deprecated: 26.0, message: "Replace .backport.backgroundExtensionEffect() with native .backgroundExtensionEffect() after all minimum targets support it.")
+func backgroundExtensionEffect() -> some View
+```
+
+Apply a separate `deprecated` annotation for every supported platform where the
+native replacement is verified, using that platform's native availability and a
+message that names both the replacement and removal condition. Do not use an
+unconditional `@available(*, deprecated, ...)` annotation for an API still
+needed below its native floor; make unsupported platforms explicit instead.
+
+For the iOS and macOS declarations above, a deployment target below 26 does not
+warn at the `.backport.backgroundExtensionEffect()` call site. A target at 26
+does warn, turning the compiler diagnostic into a removal signal. The example
+intentionally omits `obsoleted`: per-platform target movement can otherwise
+make a still-needed shared call site unavailable. Add `obsoleted` only to a
+platform-specific declaration or when every supported platform has an aligned,
+consumer-approved removal threshold.
+
+Compiler diagnostics verify availability only. They do not prove native or
+fallback behavior, including visual, interaction, accessibility, correctness,
+or data-integrity outcomes; validate those branches in the consumer project.
 
 ## `redirect-fallback`
 

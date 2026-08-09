@@ -9,8 +9,8 @@ This Swift package provides the `Backport`/`Backported` namespace pattern plus r
 Use sources in this order when they conflict:
 
 1. Public declarations under `Sources/` and executable behavior under `Tests/`.
-2. `docs/BACKPORT_ADOPTION_GUIDE.md` for backport selection and lifecycle rules.
-3. `.agents/skills/swiftui-backport-adoption/SKILL.md` for the repeatable SwiftUI create, review, migration, and removal workflow.
+2. `.agents/skills/swiftui-backport-adoption/SKILL.md` for the normative repeatable SwiftUI create, review, migration, and removal workflow.
+3. `docs/BACKPORT_ADOPTION_GUIDE.md` for human-readable backport rationale and examples; it does not override the skill workflow.
 4. `README.md` for the concise public entry point.
 
 `CONTRIBUTING.md` owns the contribution workflow, including branches, pull requests, review, and merge requirements.
@@ -21,7 +21,7 @@ Use sources in this order when they conflict:
 
 - Before changing the repository, read `CONTRIBUTING.md` and follow its scope, branch, verification, review, and merge workflow.
 - For package API changes, inspect `Package.swift`, `Sources/`, and affected tests first; keep changes limited to the reusable namespace mechanism.
-- For a concrete SwiftUI backport design, review, migration, or removal, work in the consumer repository and use the `swiftui-backport-adoption` skill plus the adoption guide.
+- For a concrete SwiftUI backport design, review, migration, or removal, work in the consumer repository and use the `swiftui-backport-adoption` skill as the normative workflow; consult the adoption guide for human-readable rationale and examples.
 - If a concrete backport is requested in this repository, stop and request the consumer repository and its product context instead of adding the API here.
 - For documentation changes, preserve stable category identifiers and keep consumer reference examples consistent with their documented contracts.
 - For release labels, version calculation, tag or GitHub Release work, read `docs/RELEASING.md` and preserve its human-authorization boundary.

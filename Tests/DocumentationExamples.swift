@@ -32,48 +32,21 @@ private extension Backport where Content: View {
         spacing: CGFloat? = nil,
         @ViewBuilder content barContent: () -> Bar
     ) -> some View {
-        if #available(
-            iOS 26.0,
-            macOS 26.0,
-            tvOS 26.0,
-            watchOS 26.0,
-            visionOS 26.0,
-            *
-        ) {
-            content.safeAreaBar(
-                edge: edge,
-                alignment: alignment,
-                spacing: spacing,
-                content: barContent
-            )
-        } else {
-            content.safeAreaInset(
-                edge: edge,
-                alignment: alignment,
-                spacing: spacing,
-                content: barContent
-            )
-        }
+        content.safeAreaInset(
+            edge: edge,
+            alignment: alignment,
+            spacing: spacing,
+            content: barContent
+        )
     }
 
     // Compatibility-type consumer: the call site can name a behavior before
     // SwiftUI.SearchToolbarBehavior is available at the deployment target.
     @ViewBuilder
     func searchToolbarBehavior(
-        _ behavior: Backported.SearchToolbarBehavior
+        _: Backported.SearchToolbarBehavior
     ) -> some View {
-        if #available(
-            iOS 26.0,
-            macOS 26.0,
-            tvOS 26.0,
-            watchOS 26.0,
-            visionOS 26.0,
-            *
-        ) {
-            content.searchToolbarBehavior(behavior.swiftUIValue)
-        } else {
-            content
-        }
+        content
     }
 
     // Behavioral polyfill: approximate Liquid Glass with a material, tint,
@@ -86,9 +59,7 @@ private extension Backport where Content: View {
         #if os(visionOS)
         content
         #else
-        if #available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *) {
-            content.glassEffect(glass.swiftUIValue, in: shape)
-        } else if #available(
+        if #available(
             iOS 15.0,
             macOS 12.0,
             tvOS 15.0,
@@ -118,18 +89,7 @@ private extension Backport where Content: View {
     // earlier systems keep the original content unchanged.
     @ViewBuilder
     func backgroundExtensionEffect() -> some View {
-        if #available(
-            iOS 26.0,
-            macOS 26.0,
-            tvOS 26.0,
-            watchOS 26.0,
-            visionOS 26.0,
-            *
-        ) {
-            content.backgroundExtensionEffect()
-        } else {
-            content
-        }
+        content
     }
 }
 
@@ -148,27 +108,6 @@ private extension Backported {
         @available(tvOS, unavailable)
         @available(watchOS, unavailable)
         static var minimize: Self { Self(variant: .minimize) }
-
-        @available(
-            iOS 26.0,
-            macOS 26.0,
-            tvOS 26.0,
-            watchOS 26.0,
-            visionOS 26.0,
-            *
-        )
-        fileprivate var swiftUIValue: SwiftUI.SearchToolbarBehavior {
-            switch variant {
-            case .automatic:
-                .automatic
-            case .minimize:
-                #if os(iOS) || os(visionOS)
-                .minimize
-                #else
-                .automatic
-                #endif
-            }
-        }
     }
 
     struct Glass: Sendable {
@@ -191,13 +130,6 @@ private extension Backported {
         fileprivate var shadowColor: Color {
             Color.black.opacity(0.14)
         }
-
-        #if !os(visionOS)
-        @available(iOS 26.0, macOS 26.0, tvOS 26.0, watchOS 26.0, *)
-        fileprivate var swiftUIValue: SwiftUI.Glass {
-            SwiftUI.Glass.regular.tint(tintColor)
-        }
-        #endif
     }
 }
 

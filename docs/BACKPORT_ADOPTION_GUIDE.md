@@ -50,14 +50,14 @@ Definitions:
 - **Safe degrade:** no effect on correctness, accessibility, security, or data integrity, with acceptable interaction and layout differences.
 - **Required parity:** documented fallback deltas are not acceptable for the product or platform contract.
 
-## 3. Source-Grounded Compiled Examples
+## 3. Source-Grounded Examples
 
 The following examples are reduced from the consumer-owned
 [`swiftui-liquid-glass-backport`](https://github.com/inekipelov/swiftui-liquid-glass-backport)
-implementations. Their executable adaptations live in
-[`Tests/DocumentationExamples.swift`](../Tests/DocumentationExamples.swift),
-and the complete category-oriented examples are available to agents in the
+implementations. Their complete category-oriented examples are available in the
 [`swiftui-backport-adoption` reference](../.agents/skills/swiftui-backport-adoption/references/category-examples.md).
+SDK-independent fallback adaptations and compiled call sites live in
+[`Tests/DocumentationExamples.swift`](../Tests/DocumentationExamples.swift).
 
 | Category | Consumer API | Why it fits | Explicit fallback delta |
 | --- | --- | --- | --- |
@@ -67,8 +67,10 @@ and the complete category-oriented examples are available to agents in the
 | `no-op-fallback` | `View.backport.backgroundExtensionEffect` | The effect is progressive enhancement | Returns the original view before Apple OS 26 and provides no background extension effect |
 
 The README shows each unified call site. The fixtures prove that those API
-shapes and availability-gated native branches compile on the current SDK; they
-do not prove visual, interaction, accessibility, or fallback-runtime behavior.
+shapes and fallback implementations compile without requiring the newest SDK.
+Native branches must be compiled and verified in the consumer repository
+against the SDK that provides them. Neither result proves visual, interaction,
+accessibility, or fallback-runtime behavior.
 
 The original `View.badge(_:)` fixture remains a second `no-op-fallback`
 example. It is valid only when the badge is supplementary; a required status,

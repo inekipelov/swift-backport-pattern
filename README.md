@@ -97,7 +97,9 @@ Image(systemName: "photo")
 ```
 
 These APIs remain consumer-owned; the package ships only their namespace.
-Their compact implementations and compiled call sites live in
+Their complete implementations live in the
+[`swiftui-backport-adoption` reference](.agents/skills/swiftui-backport-adoption/references/category-examples.md).
+SDK-independent fallback and call-site fixtures live in
 [`Tests/DocumentationExamples.swift`](Tests/DocumentationExamples.swift).
 
 ## Documentation

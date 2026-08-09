@@ -23,7 +23,7 @@ Use sources in this order when they conflict:
 - For package API changes, inspect `Package.swift`, `Sources/`, and affected tests first; keep changes limited to the reusable namespace mechanism.
 - For a concrete SwiftUI backport design, review, migration, or removal, work in the consumer repository and use the `swiftui-backport-adoption` skill plus the adoption guide.
 - If a concrete backport is requested in this repository, stop and request the consumer repository and its product context instead of adding the API here.
-- For documentation changes, preserve stable category identifiers and update compiled examples when code changes.
+- For documentation changes, preserve stable category identifiers and keep consumer reference examples consistent with their documented contracts.
 - For release labels, version calculation, tag or GitHub Release work, read `docs/RELEASING.md` and preserve its human-authorization boundary.
 - For consumer-project work, obtain that repository's deployment targets, supported platforms, architecture, tests, and release policy before making a recommendation.
 
@@ -39,9 +39,9 @@ Use sources in this order when they conflict:
 
 ## Documentation Rules
 
-- README examples must compile against APIs present in this repository.
-- Put executable examples in `Tests/DocumentationExamples.swift`.
-- Label non-executable code as illustrative pseudocode and executable compatibility examples as synthetic documentation fixtures.
+- README examples must use package APIs or be identified as consumer-owned reference code.
+- Keep concrete compatibility implementations in documentation and skill references, not in the package test target.
+- Label incomplete code as illustrative pseudocode and do not present reference snippets as package validation.
 - Use semantic identifiers: `redirect-fallback`, `compatibility-type`, `behavioral-polyfill`, and `no-op-fallback`.
 - Keep `CLAUDE.md` exactly `@AGENTS.md`; do not duplicate repository rules in tool-specific files.
 - Keep the canonical project skill under `.agents/skills/swiftui-backport-adoption`.

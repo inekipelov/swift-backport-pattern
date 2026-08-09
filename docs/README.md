@@ -17,7 +17,6 @@ examples in this repository are synthetic pattern fixtures.
 | Compare the four SwiftUI fallback categories | [SwiftUI Category Examples](../.agents/skills/swiftui-backport-adoption/references/category-examples.md) |
 | Configure a consumer repository's AI agent | [AI Agent Adoption](AI_AGENT_ADOPTION.md) |
 | Copy a decision-record structure | [Backport Decision Record](../.agents/skills/swiftui-backport-adoption/assets/backport-decision-record.md) |
-| Inspect compiled usage patterns | [Documentation Examples](../Tests/DocumentationExamples.swift) |
 
 ## Source Precedence
 

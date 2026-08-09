@@ -20,7 +20,6 @@ final class RepositoryStructureTests: XCTestCase {
             "docs/AI_AGENT_ADOPTION.md",
             "docs/BACKPORT_ADOPTION_GUIDE.md",
             "docs/RELEASING.md",
-            "Tests/DocumentationExamples.swift",
             ".agents/skills/swiftui-backport-adoption/SKILL.md",
             ".agents/skills/swiftui-backport-adoption/agents/openai.yaml",
             ".agents/skills/swiftui-backport-adoption/assets/backport-decision-record.md",

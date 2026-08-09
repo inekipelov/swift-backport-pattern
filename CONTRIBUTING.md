@@ -44,10 +44,10 @@ backport requires the consumer's deployment targets, supported platforms,
 product semantics, call sites, tests, release policy, owner, and removal
 trigger; this repository cannot supply that context.
 
-Synthetic compatibility examples may live under `Tests/` when they verify the
-pattern or compile documentation. Give them documentation-specific names, make
-their artificial availability explicit, and never present them as shipped
-Apple API implementations.
+Keep concrete compatibility examples in documentation and skill references,
+not in the package test target. Package tests should validate only the reusable
+namespace mechanism and repository contracts owned here. Never present
+consumer reference code as an Apple API implementation shipped by this package.
 
 ## Development Setup
 
@@ -197,9 +197,9 @@ Additional requirements depend on the affected contract:
   assessment appropriate to the package.
 - Backport changes require native and fallback evidence across supported
   platform branches where practical.
-- Documentation code must compile through
-  [`Tests/DocumentationExamples.swift`](Tests/DocumentationExamples.swift) or be
-  clearly labelled as illustrative pseudocode.
+- Documentation code must use package APIs or be clearly identified as
+  consumer-owned reference code. Incomplete code must be labelled as
+  illustrative pseudocode.
 - Performance checks are required only when the change plausibly affects time,
   memory, I/O, rendering, startup, or contention.
 

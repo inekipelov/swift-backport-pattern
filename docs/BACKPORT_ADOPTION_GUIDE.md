@@ -56,8 +56,6 @@ The following examples are reduced from the consumer-owned
 [`swiftui-liquid-glass-backport`](https://github.com/inekipelov/swiftui-liquid-glass-backport)
 implementations. Their complete category-oriented examples are available in the
 [`swiftui-backport-adoption` reference](../.agents/skills/swiftui-backport-adoption/references/category-examples.md).
-SDK-independent fallback adaptations and compiled call sites live in
-[`Tests/DocumentationExamples.swift`](../Tests/DocumentationExamples.swift).
 
 | Category | Consumer API | Why it fits | Explicit fallback delta |
 | --- | --- | --- | --- |
@@ -66,13 +64,13 @@ SDK-independent fallback adaptations and compiled call sites live in
 | `behavioral-polyfill` | `View.backport.glassEffect` | Builds custom legacy behavior from material, tint, border, clipping, and shadow on iOS, macOS, tvOS, and watchOS | Approximates native rendering and interaction; the consumer's visionOS branch is a separately documented no-op |
 | `no-op-fallback` | `View.backport.backgroundExtensionEffect` | The effect is progressive enhancement | Returns the original view before Apple OS 26 and provides no background extension effect |
 
-The README shows each unified call site. The fixtures prove that those API
-shapes and fallback implementations compile without requiring the newest SDK.
-Native branches must be compiled and verified in the consumer repository
-against the SDK that provides them. Neither result proves visual, interaction,
-accessibility, or fallback-runtime behavior.
+The README shows each unified call site. These examples are reference material,
+not package validation. Native and fallback branches must be compiled and
+verified in the consumer repository against its supported SDKs and deployment
+targets. Compilation alone does not prove visual, interaction, accessibility,
+or fallback-runtime behavior.
 
-The original `View.badge(_:)` fixture remains a second `no-op-fallback`
+The `View.badge(_:)` reference in the README is a second `no-op-fallback`
 example. It is valid only when the badge is supplementary; a required status,
 navigation cue, accessibility value, or action needs another fallback.
 

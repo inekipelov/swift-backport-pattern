@@ -62,9 +62,8 @@ struct InboxTabs: View {
 
 The native API is available on iOS/iPadOS and Mac Catalyst 15, macOS 12, and
 visionOS 1. On older or unsupported platforms the shim returns the original
-view unchanged. The executable copy lives in
-[`Tests/DocumentationExamples.swift`](Tests/DocumentationExamples.swift); it is
-a consumer-reference implementation, not an API shipped by this package.
+view unchanged. This is consumer-owned reference code, not an API shipped or
+validated by this package.
 
 The four categories have concrete consumer examples adapted from
 [`swiftui-liquid-glass-backport`](https://github.com/inekipelov/swiftui-liquid-glass-backport):
@@ -75,6 +74,8 @@ The four categories have concrete consumer examples adapted from
 | `compatibility-type` | `Backported.SearchToolbarBehavior` | Store a value-like representation and bridge it to SwiftUI only on Apple OS 26+ |
 | `behavioral-polyfill` | `.backport.glassEffect` | On legacy iOS, macOS, tvOS, and watchOS, rebuild the visual hierarchy with material, tint, border, and shadow; visionOS remains unchanged |
 | `no-op-fallback` | `.backport.backgroundExtensionEffect` | Preserve the original view when the effect is only progressive enhancement |
+
+The corresponding consumer call sites are:
 
 ```swift
 ScrollView { Text("Results") }
@@ -99,8 +100,6 @@ Image(systemName: "photo")
 These APIs remain consumer-owned; the package ships only their namespace.
 Their complete implementations live in the
 [`swiftui-backport-adoption` reference](.agents/skills/swiftui-backport-adoption/references/category-examples.md).
-SDK-independent fallback and call-site fixtures live in
-[`Tests/DocumentationExamples.swift`](Tests/DocumentationExamples.swift).
 
 ## Documentation
 

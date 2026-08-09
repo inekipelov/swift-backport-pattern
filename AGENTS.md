@@ -15,12 +15,15 @@ Use sources in this order when they conflict:
 
 `CONTRIBUTING.md` owns the contribution workflow, including branches, pull requests, review, and merge requirements.
 
+`docs/RELEASING.md` owns release authorization, SemVer calculation, publication, and recovery policy.
+
 ## Task Routing
 
 - Before changing the repository, read `CONTRIBUTING.md` and follow its scope, branch, verification, review, and merge workflow.
 - For package API changes, inspect `Package.swift`, `Sources/`, and affected tests first.
 - For a concrete backport design, review, migration, or removal, use the `backport-adoption` skill and the adoption guide.
 - For documentation changes, preserve stable category identifiers and update compiled examples when code changes.
+- For release labels, version calculation, tag or GitHub Release work, read `docs/RELEASING.md` and preserve its human-authorization boundary.
 - For consumer-project work, obtain that repository's deployment targets, supported platforms, architecture, tests, and release policy before making a recommendation.
 
 ## Engineering Rules

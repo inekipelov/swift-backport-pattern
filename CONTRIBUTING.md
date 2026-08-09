@@ -19,12 +19,14 @@ Use each source for the responsibility it owns:
    under [`Tests/`](Tests/) define the package's current code contract.
 2. This file defines how changes are scoped, developed, verified, reviewed, and
    merged.
-3. [`docs/BACKPORT_ADOPTION_GUIDE.md`](docs/BACKPORT_ADOPTION_GUIDE.md) defines
+3. The [`Release Guide`](docs/RELEASING.md) defines release authorization,
+   SemVer calculation, publication, ordering, and recovery policy.
+4. [`docs/BACKPORT_ADOPTION_GUIDE.md`](docs/BACKPORT_ADOPTION_GUIDE.md) defines
    backport selection, behavior, evidence, and lifecycle policy.
-4. [`.agents/skills/backport-adoption/SKILL.md`](.agents/skills/backport-adoption/SKILL.md)
+5. [`.agents/skills/backport-adoption/SKILL.md`](.agents/skills/backport-adoption/SKILL.md)
    defines the repeatable AI workflow for backport-specific work.
-5. [`AGENTS.md`](AGENTS.md) defines repository constraints and task routing.
-6. [`README.md`](README.md) is the concise package entry point.
+6. [`AGENTS.md`](AGENTS.md) defines repository constraints and task routing.
+7. [`README.md`](README.md) is the concise package entry point.
 
 When two sources appear to conflict, follow the source that owns the affected
 responsibility and call out the conflict in the pull request. Do not silently
@@ -194,6 +196,19 @@ Keep the title at 72 characters or fewer and use one of the configured types:
 `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`, `build`, `ci`,
 `perf`, or `revert`.
 
+Release selection is explicit and independent of commit text. Before merge,
+choose at most one label according to the [`Release Guide`](docs/RELEASING.md):
+
+- `semver:major` for the next major version;
+- `semver:minor` for the next minor version;
+- `semver:patch` for the next patch version.
+
+No SemVer label is the normal no-release mode. Selecting exactly one supported
+label authorizes automatic tag and GitHub Release publication after merge and
+successful push CI; publication does not request another confirmation. The
+label state at the pull request's merge event is final for that release. An AI
+agent may change a release label only with explicit human authorization.
+
 Open the pull request as Draft. Its description must include:
 
 - the problem and scoped solution;
@@ -226,7 +241,7 @@ merge only with explicit human authorization.
 A contribution is ready to merge only when all of the following are true:
 
 - the requested behavior or documentation is complete and scoped;
-- GitHub Build, Test, and Gitlint checks are successful;
+- GitHub `release-label` and `build-and-test` checks are successful;
 - all actionable review threads are resolved;
 - every pull request has independent human approval from a reviewer other than
   the author;

@@ -21,18 +21,22 @@ for required_tool in git "$GH_BIN" "$JQ_BIN" "$SLEEP_BIN"; do
         exit 1
     }
 done
-[ "$(git rev-parse HEAD)" = "$target_sha" ] || {
-    printf '%s\n' 'release publication: checkout does not match target SHA' >&2
-    exit 1
-}
-script_dir=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
+checkout_sha=$(git rev-parse HEAD)
+script_dir=$(CDPATH='' cd -P "$(dirname "$0")" && pwd)
 
 context_for_target() { GH_BIN="$GH_BIN" JQ_BIN="$JQ_BIN" sh "$script_dir/release-context-for-sha.sh" "$repository" "$target_sha"; }
 refresh_tags() {
-    git fetch --force --tags origin
-    git fetch --no-tags origin main
+    git fetch --quiet --force --prune --prune-tags --tags origin
+    git fetch --quiet --no-tags origin main
     main_sha=$(git rev-parse origin/main)
     validate_commit_sha "$main_sha" origin/main
+    checkout_sha=$(git rev-parse HEAD)
+    validate_commit_sha "$checkout_sha" HEAD
+    [ "$checkout_sha" = "$main_sha" ] || {
+        printf '%s\n' 'release publication: checkout does not match current main' >&2
+        return 1
+    }
+    validate_commit_sha "$target_sha" TARGET_SHA
     if is_ancestor_checked "$target_sha" "$main_sha"; then
         :
     else
@@ -62,6 +66,28 @@ is_ancestor_checked() {
     printf '%s\n' "release publication: ancestry check failed: $1 -> $2" >&2
     return 2
 }
+read_remote_lightweight_tag_sha() {
+    remote_version=$1
+    if remote_sha=$("$GH_BIN" api \
+        "repos/$repository/git/ref/tags/$remote_version" \
+        --jq 'select(.object.type == "commit") | .object.sha' \
+        2>"$remote_ref_error"); then
+        [ -n "$remote_sha" ] || return 1
+        printf '%s\n' "$remote_sha"
+    else
+        return 1
+    fi
+}
+validate_remote_release_tag() {
+    validated_ref_sha=$(read_remote_lightweight_tag_sha "$1") || {
+        printf '%s\n' "release publication: remote tag is missing or not lightweight: $1" >&2
+        return 1
+    }
+    [ "$validated_ref_sha" = "$2" ] || {
+        printf '%s\n' "release publication: remote tag does not match target SHA: $1" >&2
+        return 1
+    }
+}
 write_tag_release_state() {
     : >"$tag_release_file"
     : >"$tag_file"
@@ -90,7 +116,9 @@ write_tag_release_state() {
 
     "$GH_BIN" api --paginate --slurp \
         "repos/$repository/releases?per_page=100" >"$releases_file"
-    while IFS="$(printf '\t')" read -r observed_record observed_version observed_tag_sha; do
+    while IFS="$(printf '\t')" read -r _ observed_version _; do
+        # jq expands $version, not the shell.
+        # shellcheck disable=SC2016
         release_state=$("$JQ_BIN" -r --arg version "$observed_version" '
           [add[] | select(.tag_name == $version)] |
           if length == 0 then "missing"
@@ -197,7 +225,14 @@ cleanup_temporary_files() {
     rm -f "$state_file" "$plan_file" "$tag_file" "$all_tags_file" \
         "$releases_file" "$pulls_file" "$tag_release_file" \
         "$pr_state_file" "$release_versions_file" "$pull_rows_file" \
-        "$ancestor_versions_file" "$tag_create_response" "$tag_create_error"
+        "$ancestor_versions_file" "$tag_create_response" "$tag_create_error" \
+        "$remote_ref_error"
+}
+handle_signal() {
+    signal_status=$1
+    trap - 0 1 2 15
+    cleanup_temporary_files
+    exit "$signal_status"
 }
 
 state_file=
@@ -213,7 +248,11 @@ pull_rows_file=
 ancestor_versions_file=
 tag_create_response=
 tag_create_error=
-trap cleanup_temporary_files 0 1 2 15
+remote_ref_error=
+trap cleanup_temporary_files 0
+trap 'handle_signal 129' 1
+trap 'handle_signal 130' 2
+trap 'handle_signal 143' 15
 
 release_tmp_root=${RUNNER_TEMP:-/tmp}
 state_file=$(mktemp "$release_tmp_root/release-state.XXXXXX")
@@ -229,7 +268,9 @@ pull_rows_file=$(mktemp "$release_tmp_root/release-pulls.XXXXXX")
 ancestor_versions_file=$(mktemp "$release_tmp_root/release-ancestors.XXXXXX")
 tag_create_response=$(mktemp "$release_tmp_root/release-tag-create.XXXXXX")
 tag_create_error=$(mktemp "$release_tmp_root/release-tag-error.XXXXXX")
+remote_ref_error=$(mktemp "$release_tmp_root/release-ref-error.XXXXXX")
 
+refresh_tags
 context=$(context_for_target)
 context_sha=$(read_context_value merge_sha)
 bump=$(read_context_value bump)
@@ -305,45 +346,61 @@ if [ "$action" = create ]; then
         >"$tag_create_response" 2>"$tag_create_error"; then
         :
     else
-        if ! grep -Eq 'HTTP 422([^0-9]|$)' "$tag_create_error"; then
+        if ! grep -Eq 'HTTP 422([^0-9]|$)' "$tag_create_error" || \
+            ! grep -Fq 'Reference already exists' "$tag_create_error"; then
             cat "$tag_create_error" >&2
             exit 1
         fi
 
-        existing_ref_sha=$("$GH_BIN" api \
-            "repos/$repository/git/ref/tags/$version" \
-            --jq 'select(.object.type == "commit") | .object.sha') || {
+        existing_ref_sha=$(read_remote_lightweight_tag_sha "$version") || {
                 cat "$tag_create_error" >&2
+                printf '%s\n' 'release publication: conflicting tag is missing or not lightweight' >&2
                 exit 1
-            }
-        [ -n "$existing_ref_sha" ] || {
-            cat "$tag_create_error" >&2
-            printf '%s\n' 'release publication: conflicting tag is not lightweight' >&2
-            exit 1
         }
 
         refresh_tags
         write_state_file
         sh "$script_dir/plan-release.sh" "$target_sha" "$bump" "$state_file" >"$plan_file"
         conflict_action=$(read_plan_value action)
+        conflict_previous=$(read_plan_value previous)
         conflict_version=$(read_plan_value version)
-        [ "$conflict_version" = "$version" ] || {
-            printf '%s\n' 'release publication: tag conflict changed candidate version' >&2
+        [ "$conflict_previous" = "$planned_previous" ] && \
+            [ "$conflict_version" = "$planned_version" ] || {
+            printf '%s\n' 'release publication: tag conflict changed release plan' >&2
             exit 1
         }
         case "$conflict_action" in
-            resume) : ;;
-            noop) exit 0 ;;
+            resume)
+                action=$conflict_action
+                previous=$conflict_previous
+                version=$conflict_version
+                ;;
+            noop)
+                [ "$existing_ref_sha" = "$target_sha" ] || {
+                    printf '%s\n' 'release publication: tag conflict points to another SHA' >&2
+                    exit 1
+                }
+                exit 0
+                ;;
             *) printf '%s\n' 'release publication: tag conflict is inconsistent' >&2; exit 1 ;;
         esac
     fi
 fi
 
+validate_remote_release_tag "$version" "$target_sha"
+
 notes_json=$("$GH_BIN" api --method POST "repos/$repository/releases/generate-notes" \
     -f tag_name="$version" \
     -f target_commitish="$target_sha" \
     -f previous_tag_name="$previous")
-notes_body=$(printf '%s\n' "$notes_json" | "$JQ_BIN" -r '.body')
+if notes_body=$(printf '%s\n' "$notes_json" | "$JQ_BIN" -er '.body | strings' 2>/dev/null); then
+    :
+else
+    printf '%s\n' 'release publication: generated notes body is not a string' >&2
+    exit 1
+fi
+
+validate_remote_release_tag "$version" "$target_sha"
 
 "$GH_BIN" api --method POST "repos/$repository/releases" \
     -f tag_name="$version" \

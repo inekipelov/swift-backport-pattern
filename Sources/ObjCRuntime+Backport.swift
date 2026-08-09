@@ -1,16 +1,17 @@
 #if canImport(ObjectiveC)
 import Foundation
 
-/// Extensions for Objective-C runtime objects to support backport functionality.
+/// Namespace access for Objective-C runtime objects.
 ///
-/// This extension adds backport support to all `NSObject` instances, enabling
-/// the use of modern API features on older framework versions for Objective-C
-/// based objects.
+/// This extension only wraps `NSObjectProtocol` values in `Backport`. Consumer
+/// modules define and own any concrete compatibility behavior added through
+/// constrained `Backport` extensions.
 public extension NSObjectProtocol {
-    /// Provides backport functionality for NSObject instances.
+    /// Exposes the receiver through the `Backport` namespace.
     ///
     /// This computed property wraps the NSObject instance in a `Backport` struct,
-    /// enabling the addition of modern API features through backport extensions.
+    /// giving consumer modules a constrained extension point without adding
+    /// concrete compatibility behavior to this package.
     ///
     /// ## Usage
     ///
@@ -19,7 +20,7 @@ public extension NSObjectProtocol {
     /// let wrappedObject = object.backport
     /// ```
     ///
-    /// - Returns: A `Backport` wrapper around this NSObject instance.
+    /// - Returns: A namespace wrapper around this Objective-C object.
     var backport: Backport<Self> { .init(self) }
 }
 

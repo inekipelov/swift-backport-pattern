@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  release-label:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Record policy tools
+        shell: bash
+        run: |
+          git --version
+          gh --version
+          jq --version
+      - name: Validate pull request release labels
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -o pipefail
+          jq -r '.pull_request.labels[].name' "$GITHUB_EVENT_PATH" | sh scripts/validate-release-labels.sh
+      - name: Validate merged pull request release labels
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: sh scripts/release-context-for-sha.sh "$GITHUB_REPOSITORY" "$GITHUB_SHA"
+
+  build-and-test:
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
+      - name: Record toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+          xcbeautify --version
+          git --version
+          jq --version
+      - name: Validate release contracts
+        run: |
+          sh scripts/test-release-contract.sh
+          sh scripts/test-publish-release.sh
+      - name: Build package and tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift build --build-tests 2>&1 | xcbeautify --renderer github-actions
+      - name: Run prebuilt tests
+        shell: bash
+        run: |
+          set -o pipefail
+          swift test --skip-build 2>&1 | xcbeautify --renderer github-actions --is-ci

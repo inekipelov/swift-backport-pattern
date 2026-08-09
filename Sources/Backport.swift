@@ -1,13 +1,15 @@
-/// A generic wrapper that provides backport functionality for any type.
+/// A generic wrapper that establishes a namespace for consumer-defined
+/// compatibility APIs.
 ///
-/// The `Backport` struct wraps content while enabling the addition of backport
-/// functionality through constrained extensions.
+/// The `Backport` struct stores content and gives consumer modules a stable
+/// extension point through constrained extensions. This package does not add
+/// concrete framework API backports to the namespace.
 ///
 /// ## Overview
 ///
-/// This struct serves as the foundation for the backport system, allowing you to
-/// add modern API features to older versions of frameworks. It wraps any content
-/// and provides access to the original content via `content`.
+/// This struct is the foundation of the namespace pattern. It wraps any content
+/// and exposes the original value through `content`; consumers own the behavior,
+/// fallback semantics, and lifecycle of extensions they add.
 ///
 /// ## Usage
 ///
@@ -17,16 +19,16 @@
 /// ```
 ///
 public struct Backport<Content> {
-    /// The wrapped content that will receive backport functionality.
+    /// The wrapped content exposed through the compatibility namespace.
     ///
     /// This property holds the original content that the backport wraps,
-    /// providing access to all of its original functionality while enabling
-    /// the addition of backport features.
+    /// providing access to its original behavior from consumer-defined
+    /// constrained extensions.
     public let content: Content
 
     /// Creates a new backport wrapper around the provided content.
     ///
-    /// - Parameter content: The content to wrap with backport functionality.
+    /// - Parameter content: The content to expose through the namespace.
     public init(_ content: Content) {
         self.content = content
     }

@@ -1,25 +1,24 @@
 #if canImport(SwiftUI)
 import SwiftUI
 
-/// Extensions for SwiftUI views to support backport functionality.
+/// Namespace access for SwiftUI views.
 ///
-/// This extension adds backport support to all SwiftUI `View` instances, enabling
-/// the use of modern SwiftUI features on older iOS, macOS, watchOS, and tvOS versions.
+/// This extension only wraps a `View` in `Backport`. Consumer modules define and
+/// own any concrete SwiftUI compatibility behavior added through constrained
+/// `Backport` extensions.
 @available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *)
 public extension View {
-    /// A view modifier that provides backport functionality for SwiftUI views.
+    /// Exposes the view through the `Backport` namespace.
     ///
-    /// This computed property wraps the view in a `Backport` struct, enabling the
-    /// addition of modern SwiftUI features through backport extensions. This is
-    /// particularly useful when you want to use newer SwiftUI APIs while maintaining
-    /// compatibility with older OS versions.
+    /// This computed property wraps the view in a `Backport` struct so consumer
+    /// modules can add constrained compatibility extensions without
+    /// placing concrete API implementations in this package.
     ///
     /// ## Overview
     ///
-    /// The backport system allows you to use modern SwiftUI features in apps that
-    /// need to support older OS versions. By using the backport property, you can
-    /// access implementations of newer APIs that have been adapted to work on
-    /// older versions of SwiftUI.
+    /// The package supplies only the wrapper. The consuming module is responsible
+    /// for native and fallback branches, semantic differences, verification, and
+    /// removal of every concrete extension.
     ///
     /// ## Usage
     ///
@@ -27,8 +26,7 @@ public extension View {
     /// let wrappedText = Text("Hello, World!").backport
     /// ```
     ///
-    /// - Returns: A `Backport` wrapper around this view that provides access
-    ///   to backported SwiftUI functionality.
+    /// - Returns: A namespace wrapper around this view.
     ///
     /// - Note: This modifier is available only when SwiftUI can be imported,
     ///   ensuring compatibility across different platform targets.

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This Swift package provides the `Backport`/`Backported` namespace pattern plus reference material for designing compatibility APIs. Concrete Apple API backports belong in consumer app or package modules unless the user explicitly expands this package's public API.
+This Swift package provides the `Backport`/`Backported` namespace pattern plus reference material for designing compatibility APIs. Concrete compatibility APIs are out of scope for `Sources/`. Their implementations, fallback semantics, validation, ownership, and removal lifecycle belong in consumer app or package modules.
 
 ## Sources of Truth
 
@@ -20,8 +20,9 @@ Use sources in this order when they conflict:
 ## Task Routing
 
 - Before changing the repository, read `CONTRIBUTING.md` and follow its scope, branch, verification, review, and merge workflow.
-- For package API changes, inspect `Package.swift`, `Sources/`, and affected tests first.
-- For a concrete backport design, review, migration, or removal, use the `backport-adoption` skill and the adoption guide.
+- For package API changes, inspect `Package.swift`, `Sources/`, and affected tests first; keep changes limited to the reusable namespace mechanism.
+- For a concrete backport design, review, migration, or removal, work in the consumer repository and use the `backport-adoption` skill plus the adoption guide.
+- If a concrete backport is requested in this repository, stop and request the consumer repository and its product context instead of adding the API here.
 - For documentation changes, preserve stable category identifiers and update compiled examples when code changes.
 - For release labels, version calculation, tag or GitHub Release work, read `docs/RELEASING.md` and preserve its human-authorization boundary.
 - For consumer-project work, obtain that repository's deployment targets, supported platforms, architecture, tests, and release policy before making a recommendation.
@@ -30,6 +31,7 @@ Use sources in this order when they conflict:
 
 - Keep the package dependency-free and preserve `swift-tools-version: 5.0` unless the user explicitly approves a compatibility change.
 - Preserve existing deployment targets and public API unless the task explicitly changes them.
+- Do not add concrete Apple API methods, compatibility types, fallback implementations, or product policy to the package target.
 - Keep availability and platform branching inside the compatibility layer, not at feature call sites.
 - Do not claim semantic parity without evidence. State user-visible, accessibility, correctness, security, and data-integrity deltas.
 - Treat Apple documentation and SDK declarations as primary sources for API signatures and availability.
@@ -39,7 +41,7 @@ Use sources in this order when they conflict:
 
 - README examples must compile against APIs present in this repository.
 - Put executable examples in `Tests/DocumentationExamples.swift`.
-- Label non-executable code as illustrative pseudocode.
+- Label non-executable code as illustrative pseudocode and executable compatibility examples as synthetic documentation fixtures.
 - Use semantic identifiers: `redirect-fallback`, `compatibility-type`, `behavioral-polyfill`, and `no-op-fallback`.
 - Keep `CLAUDE.md` exactly `@AGENTS.md`; do not duplicate repository rules in tool-specific files.
 - Keep the canonical project skill under `.agents/skills/backport-adoption`.

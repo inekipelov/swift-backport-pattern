@@ -2,6 +2,10 @@
 
 This directory contains the public engineering guidance for the Backport pattern.
 
+The package implements only the reusable namespace mechanism. Concrete Apple
+API backports and their lifecycle records belong to consumer repositories;
+examples in this repository are synthetic pattern fixtures.
+
 ## Start Here
 
 | Need | Source |

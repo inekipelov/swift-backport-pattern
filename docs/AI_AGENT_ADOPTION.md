@@ -6,6 +6,10 @@ The package includes one canonical project skill for designing, reviewing, migra
 .agents/skills/backport-adoption/
 ```
 
+The skill guides concrete work in consumer repositories. It does not make a
+concrete backport part of this package and must not be used to add one under
+this repository's `Sources/`.
+
 ## In This Repository
 
 - Codex discovers the skill from `.agents/skills` and reads `AGENTS.md`.

@@ -9,6 +9,13 @@ description: Use when creating, reviewing, migrating, or removing a Swift or Swi
 
 Preserve one stable call site while making every native/fallback semantic difference explicit, owned, tested, and removable.
 
+## Confirm Repository Ownership
+
+1. Identify the repository that will own the concrete compatibility API.
+2. Continue concrete design or implementation only in a consumer app or package repository with product and platform context.
+3. If the target is the `swift-backport-pattern` package, limit work to the namespace mechanism, documentation, or synthetic tests. Do not add concrete compatibility APIs to the pattern package.
+4. Request the consumer repository when concrete work was incorrectly targeted here.
+
 ## Establish Context
 
 1. Read `docs/BACKPORT_ADOPTION_GUIDE.md` when present.
@@ -37,7 +44,8 @@ Copy [assets/backport-decision-record.md](assets/backport-decision-record.md) in
 - Put compatibility types under `Backported` and document invariants.
 - Keep availability and platform branching inside the compatibility layer.
 - Mirror native naming only when compatibility semantics justify it.
-- Keep app-specific backports in consumer modules.
+- Keep every concrete backport in consumer modules, including reusable-looking Apple API shims.
+- Keep the pattern package free of concrete methods, compatibility types, fallback behavior, and product policy.
 - Block ungrounded parity, unsafe no-ops, missing platform branches, and missing removal ownership.
 
 ## Verify Evidence
@@ -63,7 +71,7 @@ Compilation is not behavior, accessibility, visual, interaction, or data-integri
 
 ## Output Contract
 
-Return, in order: verdict or category; behavior contract; rejected alternatives; risk; platform matrix; verification and gaps; owner and removal trigger. Lead reviews with blocking findings.
+Return, in order: repository-ownership verdict; category; behavior contract; rejected alternatives; risk; platform matrix; verification and gaps; owner and removal trigger. Lead reviews with blocking findings.
 
 ## Common Mistakes
 

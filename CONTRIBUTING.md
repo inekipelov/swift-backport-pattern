@@ -32,6 +32,23 @@ When two sources appear to conflict, follow the source that owns the affected
 responsibility and call out the conflict in the pull request. Do not silently
 choose a materially different public or compatibility contract.
 
+## Repository Boundary
+
+This repository owns the reusable `Backport`/`Backported` namespace mechanism,
+its public access points, tests, documentation, and adoption workflow. Concrete
+compatibility APIs must be implemented and owned by a consumer repository.
+
+Do not add Apple API methods, compatibility types, fallback implementations,
+or product-specific availability policy to this package's `Sources/`. A real
+backport requires the consumer's deployment targets, supported platforms,
+product semantics, call sites, tests, release policy, owner, and removal
+trigger; this repository cannot supply that context.
+
+Synthetic compatibility examples may live under `Tests/` when they verify the
+pattern or compile documentation. Give them documentation-specific names, make
+their artificial availability explicit, and never present them as shipped
+Apple API implementations.
+
 ## Development Setup
 
 Clone the repository, enter its root directory, and confirm the package has a
@@ -132,13 +149,18 @@ issue is not mandatory.
 
 ## Backport-Specific Changes
 
-For a concrete backport design, review, migration, or removal, use the
+This section governs consumer work and changes to this repository's adoption
+guidance; it does not authorize concrete compatibility APIs in the package
+target.
+
+For a concrete backport design, review, migration, or removal, work in the
+consumer repository and use the
 [`backport-adoption` skill](.agents/skills/backport-adoption/SKILL.md) and the
 [`Backport Adoption Guide`](docs/BACKPORT_ADOPTION_GUIDE.md). Verify native API
 signatures and availability against primary Apple documentation or installed
 SDK declarations.
 
-Create or update a
+Create or update a consumer-owned
 [`backport-decision-record`](.agents/skills/backport-adoption/assets/backport-decision-record.md)
 that identifies:
 

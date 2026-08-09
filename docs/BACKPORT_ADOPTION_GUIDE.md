@@ -5,9 +5,16 @@ Use this compact engineering guide to adopt compatibility APIs with:
 - `Backport<Content>` for instance APIs: `view.backport.someAPI(...)`
 - `Backported` (`Backport<Never>`) for compatibility types: `Backported.SomeType`
 
-This repository defines the pattern. Concrete Apple API adoptions belong in consumer app or package modules.
+This is a consumer adoption guide. This repository defines and tests the
+namespace pattern only. Do not add concrete Apple API backports to this
+package's `Sources/`. Concrete implementations, semantic decisions, evidence,
+ownership, and removal records belong in consumer app or package modules.
 
 ## 1. Scope
+
+Before selecting a category, confirm that the target is a consumer repository
+with product and platform context. A request targeting this pattern package
+must be redirected to the consumer rather than implemented here.
 
 Every backport must:
 
@@ -43,16 +50,28 @@ Definitions:
 - **Safe degrade:** no effect on correctness, accessibility, security, or data integrity, with acceptable interaction and layout differences.
 - **Required parity:** documented fallback deltas are not acceptable for the product or platform contract.
 
-## 3. Compiled Patterns
+## 3. Source-Grounded Compiled Example
 
-[`Tests/DocumentationExamples.swift`](../Tests/DocumentationExamples.swift) compiles representative implementations for all four categories:
+[`Tests/DocumentationExamples.swift`](../Tests/DocumentationExamples.swift)
+contains a consumer-reference implementation of
+[`View.badge(_:)`](https://developer.apple.com/documentation/swiftui/view/badge(_:)-8adyq),
+the concrete SwiftUI need in Dave DeLong's original Backport example:
 
-- `documentationRedirectEffect()` — legacy API redirect;
-- `Backported.DocumentationEffect` — compatibility type;
-- `documentationPolyfillEffect()` — custom legacy behavior;
-- `documentationNoOpEffect()` — safe unchanged-content fallback.
+```swift
+view.backport.badge(unreadCount)
+```
 
-The examples use a deliberately unreachable OS version so the current test environment compiles the native branches and executes the fallback branches. They demonstrate structure, not a real Apple API contract. Verify real signatures and availability against Apple documentation and the consumer's SDK.
+Apple documents `badge(_:)` as optional, supplementary information. The
+example therefore selects `no-op-fallback`: it calls the native API on
+iOS/iPadOS and Mac Catalyst 15+, macOS 12+, and visionOS 1+, and otherwise
+returns the original view unchanged. Do not use this fallback when the badge
+communicates required status, navigation, accessibility information, or an
+action the user must discover.
+
+The compiled fixture verifies the unified call site and availability-gated
+construction on the current SDK. It is not visual, interaction, or
+accessibility evidence, and its fallback branch must be exercised by the
+consumer's platform test plan before adopting the shim in production.
 
 ## 4. Mandatory Decision Record
 
@@ -69,16 +88,17 @@ Start from the [Backport Decision Record](../.agents/skills/backport-adoption/as
 
 ## 5. Implementation Rules
 
-1. Mirror Apple naming where practical without claiming unsupported parity.
-2. Put instance behavior in `extension Backport where Content: ...`.
-3. Put compatibility types under `Backported`.
-4. Keep availability and platform branching inside the backport layer.
-5. Return structurally valid content from every SwiftUI branch.
-6. Make platform gaps explicit, including platforms that the consumer does not support.
-7. Keep compatibility types small and value-like; document their invariants.
-8. Guard every native conversion with the matching availability condition.
-9. Keep unrelated convenience APIs outside the backport layer.
-10. Document semantic deltas in API documentation and the decision record.
+1. Implement the concrete API in a consumer-owned module, never in this package target.
+2. Mirror Apple naming where practical without claiming unsupported parity.
+3. Put instance behavior in `extension Backport where Content: ...`.
+4. Put compatibility types under `Backported`.
+5. Keep availability and platform branching inside the backport layer.
+6. Return structurally valid content from every SwiftUI branch.
+7. Make platform gaps explicit, including platforms that the consumer does not support.
+8. Keep compatibility types small and value-like; document their invariants.
+9. Guard every native conversion with the matching availability condition.
+10. Keep unrelated convenience APIs outside the backport layer.
+11. Document semantic deltas in API documentation and the decision record.
 
 ## 6. Verification Gate
 
@@ -119,3 +139,4 @@ Complete removal in the first release cycle after the deployment-target change. 
 
 - Dave DeLong, [Simplifying Backwards Compatibility in Swift](https://davedelong.com/blog/2021/10/09/simplifying-backwards-compatibility-in-swift/)
 - SwiftUI Garden, [Handling different iOS versions in a View body](https://swiftui-garden.com/Articles/Handling-different-iOS-versions-in-a-View-body)
+- Apple, [`View.badge(_:)`](https://developer.apple.com/documentation/swiftui/view/badge(_:)-8adyq)

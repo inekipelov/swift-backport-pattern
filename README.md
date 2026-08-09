@@ -1,7 +1,7 @@
 # Backport
 
 `Backport` is a tiny Swift Package that implements the backport pattern as a
-small, reusable wrapper.
+small, reusable namespace. It does not ship concrete Apple API backports.
 
 The design is inspired by [Dave DeLong’s write-up on backwards
 compatibility](https://davedelong.com/blog/2021/10/09/simplifying-backwards-compatibility-in-swift/).
@@ -18,30 +18,53 @@ compatibility](https://davedelong.com/blog/2021/10/09/simplifying-backwards-comp
 
 ## Usage
 
-The package provides a namespace pattern. Consumer modules define the concrete
-compatibility APIs they need:
+The package owns the reusable namespace mechanism: `Backport<Content>`, the
+`Backported` type namespace, and `.backport` access for supported framework
+types. Consumer modules own every concrete compatibility API, its native and
+fallback behavior, validation, and eventual removal.
+
+For example, an app that supports iOS 14 can keep one call site for the real
+SwiftUI [`View.badge(_:)`](https://developer.apple.com/documentation/swiftui/view/badge(_:)-8adyq)
+API. This consumer-owned shim is appropriate only when the unread count is
+supplementary; it must not hide a required status or action on older systems.
 
 ```swift
-import Foundation
+import SwiftUI
 import Backport
 
-struct Article {
-    let title: String
-}
-
-extension Backport where Content == Article {
-    var normalizedTitle: String {
-        content.title
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
+extension Backport where Content: View {
+    @ViewBuilder
+    func badge(_ count: Int) -> some View {
+        #if os(iOS) || os(macOS) || os(visionOS)
+        if #available(iOS 15.0, macOS 12.0, visionOS 1.0, *) {
+            content.badge(count)
+        } else {
+            content
+        }
+        #else
+        content
+        #endif
     }
 }
 
-let title = Backport(Article(title: "  News  ")).normalizedTitle
+struct InboxTabs: View {
+    let unreadCount: Int
+
+    var body: some View {
+        TabView {
+            Text("Inbox")
+                .tabItem { Label("Inbox", systemImage: "tray") }
+                .backport.badge(unreadCount)
+        }
+    }
+}
 ```
 
-An executable version of this pattern lives in
-[`Tests/DocumentationExamples.swift`](Tests/DocumentationExamples.swift).
+The native API is available on iOS/iPadOS and Mac Catalyst 15, macOS 12, and
+visionOS 1. On older or unsupported platforms the shim returns the original
+view unchanged. The executable copy lives in
+[`Tests/DocumentationExamples.swift`](Tests/DocumentationExamples.swift); it is
+a consumer-reference implementation, not an API shipped by this package.
 
 ## Documentation
 
